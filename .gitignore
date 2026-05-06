@@ -1,0 +1,39 @@
+# Secrets
+.env
+
+# Runtime / generated
+*.pid
+logs/
+shared/bus/
+shared/events/
+Kingofyadav/state.json
+Kingofyadav/state.backup.json
+Kingofyadav/state.backup-*.json
+Kingofyadav/memory.db*
+Kingofyadav/memory_event_archive.json
+Jarvis/profiles.json
+Jarvis/user_profile.json
+logs/dashboard_history.jsonl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Large binaries / downloads
+*.deb
+*.rpm
+*.pkg
+
+# Backup files
+*.backup
+scripts/*.backup

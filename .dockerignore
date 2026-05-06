@@ -1,0 +1,7 @@
+.git
+.venv
+app/.venv
+**/__pycache__
+**/.pytest_cache
+logs/*.log
+logs/*.pid

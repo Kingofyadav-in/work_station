@@ -1,0 +1,28 @@
+{
+  "include": [
+    "Jarvis",
+    "Kingofyadav",
+    "shared",
+    "app",
+    "web"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "**/tests",
+    "logs",
+    "shared/bus",
+    "shared/events"
+  ],
+  "extraPaths": [
+    "Jarvis",
+    "Kingofyadav",
+    "shared",
+    "app"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning"
+}

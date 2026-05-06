@@ -1,0 +1,17 @@
+[Unit]
+Description=Jarvis — Kingofyadav HI listener
+After=network.target
+PartOf=jarvis.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kingofyadav/jarvis-platform/Kingofyadav
+EnvironmentFile=-/home/kingofyadav/jarvis-platform/.env
+ExecStart=/home/kingofyadav/jarvis-platform/.venv/bin/python /home/kingofyadav/jarvis-platform/Kingofyadav/app.py
+Restart=always
+RestartSec=3
+StandardOutput=append:/home/kingofyadav/jarvis-platform/logs/kingofyadav.log
+StandardError=append:/home/kingofyadav/jarvis-platform/logs/kingofyadav.log
+
+[Install]
+WantedBy=default.target

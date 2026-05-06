@@ -1,0 +1,17 @@
+[Unit]
+Description=Jarvis — Control Plane API (port 5050)
+After=network.target jarvis-kingofyadav.service
+PartOf=jarvis.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kingofyadav/jarvis-platform/web
+EnvironmentFile=-/home/kingofyadav/jarvis-platform/.env
+ExecStart=/home/kingofyadav/jarvis-platform/.venv/bin/python /home/kingofyadav/jarvis-platform/web/api.py
+Restart=always
+RestartSec=3
+StandardOutput=append:/home/kingofyadav/jarvis-platform/logs/api.log
+StandardError=append:/home/kingofyadav/jarvis-platform/logs/api.log
+
+[Install]
+WantedBy=default.target

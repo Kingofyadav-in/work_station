@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import re
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = Path(__file__).resolve().parent / "memory.db"
+
+_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_\-]{1,}", re.I)
+_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "for", "from", "has", "have",
+    "i", "in", "is", "it", "me", "my", "of", "on", "or", "that", "the",
+    "this", "to", "was", "were", "what", "when", "with", "you",
+}
+
+
+def _connect() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db() -> None:
+    with _connect() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memories (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                text TEXT NOT NULL,
+                event TEXT NOT NULL DEFAULT '',
+                command TEXT NOT NULL DEFAULT '',
+                tag TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'user',
+                visibility TEXT NOT NULL DEFAULT 'private',
+                importance INTEGER NOT NULL DEFAULT 3,
+                created_at TEXT NOT NULL,
+                search_text TEXT NOT NULL,
+                token_vector TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_memories_tag ON memories(tag)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_memories_visibility ON memories(visibility)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memory_connections (
+                source_id TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                relation TEXT NOT NULL DEFAULT 'related',
+                score REAL NOT NULL DEFAULT 0,
+                PRIMARY KEY (source_id, target_id, relation)
+            )
+            """
+        )
+
+
+def _stem(token: str) -> str:
+    token = token.lower().strip("-_")
+    for suffix in ("ing", "ers", "ies", "ed", "es", "s"):
+        if len(token) > len(suffix) + 3 and token.endswith(suffix):
+            if suffix == "ies":
+                return token[:-3] + "y"
+            return token[: -len(suffix)]
+    return token
+
+
+def tokenize(text: str) -> list[str]:
+    return [
+        _stem(match.group(0))
+        for match in _TOKEN_RE.finditer(text.lower())
+        if match.group(0).lower() not in _STOPWORDS
+    ]
+
+
+def _token_vector(text: str) -> dict[str, float]:
+    counts: dict[str, float] = {}
+    for token in tokenize(text):
+        counts[token] = counts.get(token, 0.0) + 1.0
+    length = math.sqrt(sum(value * value for value in counts.values())) or 1.0
+    return {token: value / length for token, value in counts.items()}
+
+
+def _cosine(a: dict[str, float], b: dict[str, float]) -> float:
+    if not a or not b:
+        return 0.0
+    small, large = (a, b) if len(a) <= len(b) else (b, a)
+    return sum(value * large.get(token, 0.0) for token, value in small.items())
+
+
+def _primary_text(entry: dict[str, Any]) -> str:
+    return str(entry.get("text") or entry.get("event") or entry.get("command") or "").strip()
+
+
+def _search_text(entry: dict[str, Any]) -> str:
+    parts = [
+        str(entry.get("type", "")),
+        str(entry.get("text", "")),
+        str(entry.get("event", "")),
+        str(entry.get("command", "")),
+        str(entry.get("tag", "")),
+        str(entry.get("source", "")),
+    ]
+    return " ".join(part for part in parts if part).strip()
+
+
+def memory_id(entry: dict[str, Any]) -> str:
+    basis = "|".join([
+        str(entry.get("created_at", "")),
+        str(entry.get("type", "")),
+        _primary_text(entry),
+    ])
+    return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
+
+
+def _normalize_metadata(entry: dict[str, Any]) -> dict[str, Any]:
+    importance = entry.get("importance", 3)
+    try:
+        importance_int = max(1, min(5, int(importance)))
+    except (TypeError, ValueError):
+        importance_int = 3
+    visibility = str(entry.get("visibility", "private")).strip().lower()
+    if visibility not in {"private", "public"}:
+        visibility = "private"
+    return {
+        "source": str(entry.get("source", "user") or "user").strip() or "user",
+        "visibility": visibility,
+        "importance": importance_int,
+    }
+
+
+def upsert_memory(entry: dict[str, Any]) -> str:
+    init_db()
+    entry_id = str(entry.get("id") or memory_id(entry))
+    search_text = _search_text(entry)
+    vector = _token_vector(search_text)
+    metadata = _normalize_metadata(entry)
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO memories (
+                id, type, text, event, command, tag, source, visibility,
+                importance, created_at, search_text, token_vector
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                type=excluded.type,
+                text=excluded.text,
+                event=excluded.event,
+                command=excluded.command,
+                tag=excluded.tag,
+                source=excluded.source,
+                visibility=excluded.visibility,
+                importance=excluded.importance,
+                created_at=excluded.created_at,
+                search_text=excluded.search_text,
+                token_vector=excluded.token_vector
+            """,
+            (
+                entry_id,
+                str(entry.get("type", "note") or "note"),
+                str(entry.get("text", "") or ""),
+                str(entry.get("event", "") or ""),
+                str(entry.get("command", "") or ""),
+                str(entry.get("tag", "") or ""),
+                metadata["source"],
+                metadata["visibility"],
+                metadata["importance"],
+                str(entry.get("created_at", "")),
+                search_text,
+                json.dumps(vector, sort_keys=True),
+            ),
+        )
+    refresh_connections(entry_id)
+    return entry_id
+
+
+def sync_from_state(entries: list[dict[str, Any]]) -> int:
+    init_db()
+    count = 0
+    for entry in entries:
+        if _primary_text(entry):
+            upsert_memory(entry)
+            count += 1
+    return count
+
+
+def _row_to_memory(row: sqlite3.Row, score: float | None = None) -> dict[str, Any]:
+    item = {
+        "id": row["id"],
+        "type": row["type"],
+        "text": row["text"],
+        "event": row["event"],
+        "command": row["command"],
+        "tag": row["tag"],
+        "source": row["source"],
+        "visibility": row["visibility"],
+        "importance": row["importance"],
+        "created_at": row["created_at"],
+    }
+    if score is not None:
+        item["score"] = round(score, 4)
+    return item
+
+
+def list_memories(limit: int = 50, *, visibility: str | None = None) -> list[dict[str, Any]]:
+    init_db()
+    limit = max(1, min(200, int(limit)))
+    sql = "SELECT * FROM memories"
+    params: list[Any] = []
+    if visibility:
+        sql += " WHERE visibility = ?"
+        params.append(visibility)
+    sql += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    with _connect() as conn:
+        return [_row_to_memory(row) for row in conn.execute(sql, params)]
+
+
+def search_memories(query: str, limit: int = 10) -> list[dict[str, Any]]:
+    init_db()
+    query = query.strip()
+    if not query:
+        return []
+    query_vector = _token_vector(query)
+    query_lower = query.lower()
+    scored: list[tuple[float, sqlite3.Row]] = []
+    with _connect() as conn:
+        rows = conn.execute("SELECT * FROM memories").fetchall()
+    for row in rows:
+        vector = json.loads(row["token_vector"] or "{}")
+        score = _cosine(query_vector, vector)
+        if query_lower in row["search_text"].lower():
+            score += 0.35
+        if row["tag"] and row["tag"].lower() in query_lower:
+            score += 0.2
+        score += 0.03 * int(row["importance"])
+        if score > 0:
+            scored.append((score, row))
+    scored.sort(key=lambda item: (item[0], item[1]["created_at"]), reverse=True)
+    return [_row_to_memory(row, score) for score, row in scored[: max(1, min(25, limit))]]
+
+
+def refresh_connections(memory_id_value: str, limit: int = 5) -> None:
+    init_db()
+    with _connect() as conn:
+        source = conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id_value,)).fetchone()
+        if source is None:
+            return
+        source_vector = json.loads(source["token_vector"] or "{}")
+        scored: list[tuple[float, str]] = []
+        for row in conn.execute("SELECT * FROM memories WHERE id != ?", (memory_id_value,)):
+            score = _cosine(source_vector, json.loads(row["token_vector"] or "{}"))
+            if source["tag"] and source["tag"] == row["tag"]:
+                score += 0.15
+            if score > 0:
+                scored.append((score, row["id"]))
+        scored.sort(reverse=True)
+        conn.execute("DELETE FROM memory_connections WHERE source_id = ?", (memory_id_value,))
+        for score, target_id in scored[:limit]:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO memory_connections (source_id, target_id, relation, score)
+                VALUES (?, ?, 'related', ?)
+                """,
+                (memory_id_value, target_id, score),
+            )
+
+
+def related_memories(memory_id_value: str, limit: int = 5) -> list[dict[str, Any]]:
+    init_db()
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT m.*, c.score
+            FROM memory_connections c
+            JOIN memories m ON m.id = c.target_id
+            WHERE c.source_id = ?
+            ORDER BY c.score DESC
+            LIMIT ?
+            """,
+            (memory_id_value, max(1, min(25, limit))),
+        ).fetchall()
+    return [_row_to_memory(row, float(row["score"])) for row in rows]
+
+
+def set_visibility(memory_id_value: str, visibility: str) -> bool:
+    visibility = visibility.strip().lower()
+    if visibility not in {"private", "public"}:
+        return False
+    init_db()
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE memories SET visibility = ? WHERE id = ?",
+            (visibility, memory_id_value),
+        )
+        return cur.rowcount > 0
+
+
+def delete_memory(memory_id_value: str) -> bool:
+    init_db()
+    with _connect() as conn:
+        conn.execute("DELETE FROM memory_connections WHERE source_id = ? OR target_id = ?", (memory_id_value, memory_id_value))
+        cur = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id_value,))
+        return cur.rowcount > 0

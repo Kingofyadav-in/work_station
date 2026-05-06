@@ -1,0 +1,18 @@
+[browser]
+gatherUsageStats = false
+
+[server]
+runOnSave = false
+fileWatcherType = "auto"
+headless = true
+address = "127.0.0.1"
+enableCORS = false
+enableXsrfProtection = true
+
+[theme]
+base = "light"
+primaryColor = "#9e5f1a"
+backgroundColor = "#f0ebe2"
+secondaryBackgroundColor = "#ece4d4"
+textColor = "#1e1309"
+font = "sans serif"

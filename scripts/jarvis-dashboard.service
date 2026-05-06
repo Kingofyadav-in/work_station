@@ -1,0 +1,20 @@
+[Unit]
+Description=Jarvis — Streamlit Dashboard (port 8501)
+After=network.target jarvis-kingofyadav.service
+PartOf=jarvis.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kingofyadav/jarvis-platform/app
+EnvironmentFile=-/home/kingofyadav/jarvis-platform/.env
+ExecStart=/home/kingofyadav/jarvis-platform/app/.venv/bin/streamlit run /home/kingofyadav/jarvis-platform/app/app.py \
+    --server.port 8501 \
+    --server.headless true \
+    --server.address 127.0.0.1
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/kingofyadav/jarvis-platform/logs/dashboard.log
+StandardError=append:/home/kingofyadav/jarvis-platform/logs/dashboard.log
+
+[Install]
+WantedBy=default.target

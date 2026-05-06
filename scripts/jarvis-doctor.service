@@ -1,0 +1,11 @@
+[Unit]
+Description=Jarvis — Diagnostic Doctor (single run)
+After=network.target jarvis-kingofyadav.service jarvis-api.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kingofyadav/jarvis-platform
+EnvironmentFile=-/home/kingofyadav/jarvis-platform/.env
+ExecStart=/usr/bin/bash /home/kingofyadav/jarvis-platform/scripts/doctor.sh
+StandardOutput=append:/home/kingofyadav/jarvis-platform/logs/doctor.log
+StandardError=append:/home/kingofyadav/jarvis-platform/logs/doctor.log

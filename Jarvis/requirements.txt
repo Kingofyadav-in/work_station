@@ -1,0 +1,5 @@
+SpeechRecognition>=3.10.0
+openai>=1.0.0
+anthropic>=0.25.0
+rapidfuzz>=3.0.0
+watchdog>=3.0.0

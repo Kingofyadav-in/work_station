@@ -1,0 +1,11 @@
+[Unit]
+Description=Jarvis — Process Watchdog (every 2 minutes)
+After=network.target
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=2min
+Unit=jarvis-watchdog.service
+
+[Install]
+WantedBy=timers.target

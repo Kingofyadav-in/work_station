@@ -1,0 +1,11 @@
+[Unit]
+Description=Jarvis — Process Watchdog (single run)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kingofyadav/jarvis-platform
+EnvironmentFile=-/home/kingofyadav/jarvis-platform/.env
+ExecStart=/usr/bin/bash /home/kingofyadav/jarvis-platform/scripts/watchdog.sh
+StandardOutput=append:/home/kingofyadav/jarvis-platform/logs/watchdog.log
+StandardError=append:/home/kingofyadav/jarvis-platform/logs/watchdog.log

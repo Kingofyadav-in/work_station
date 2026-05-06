@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shared Intent Contract",
+  "type": "object",
+  "required": [
+    "version",
+    "intent",
+    "source",
+    "target",
+    "payload",
+    "timestamp"
+  ],
+  "properties": {
+    "version": { "type": "string" },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "hi_get_profile",
+        "hi_get_intro",
+        "hi_get_relationship",
+        "hi_get_preferences",
+        "hi_get_memory",
+        "hi_memory_search",
+        "hi_get_workflow",
+        "hi_set_profile_field",
+        "hi_set_preference",
+        "hi_set_workflow_focus",
+        "hi_memory_add",
+        "hi_set_domain",
+        "hi_get_profile_response",
+        "hi_get_intro_response",
+        "hi_get_relationship_response",
+        "hi_get_preferences_response",
+        "hi_get_memory_response",
+        "hi_memory_search_response",
+        "hi_get_workflow_response",
+        "hi_set_profile_field_response",
+        "hi_set_preference_response",
+        "hi_set_workflow_focus_response",
+        "hi_memory_add_response",
+        "hi_set_domain_response"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": ["Jarvis", "Kingofyadav", "root"]
+    },
+    "target": {
+      "type": "string",
+      "enum": ["Jarvis", "Kingofyadav", "root"]
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "args": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "request_id": { "type": "string" },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high"]
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
