@@ -121,7 +121,7 @@ Every successful mutation appends an event to `shared/events/YYYY-MM-DD.jsonl`.
     "display_name": "King Yadav",
     "domain": "AI systems",
     "website": "https://kingofyadav.in",
-    "email": "circle.onelife@gmail.com",
+    "email": "you@example.com",
     "language": "english",
     "system_role": "primary human context",
     "owner_role": "human owner and decision-maker behind this workspace"

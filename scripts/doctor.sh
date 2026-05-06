@@ -26,14 +26,20 @@ record(){
   local name="$3"
   local detail="${4:-}"
   local icon="•"
+  local severity="OPTIONAL"
 
   case "$status" in
     PASS) PASS=$((PASS+1)); icon="✅" ;;
     WARN) WARN=$((WARN+1)); icon="⚠️ " ;;
     FAIL) FAIL=$((FAIL+1)); icon="❌" ;;
   esac
+  case "$area" in
+    security|secrets|endpoint|bridge|syntax|files|dirs|pid|python|python-module|json|bus|bus-health)
+      severity="CRITICAL"
+      ;;
+  esac
 
-  log "$icon [$status] [$area] $name ${detail:+- $detail}"
+  log "$icon [$status] [$severity] [$area] $name ${detail:+- $detail}"
   _CHECKS_RAW="${_CHECKS_RAW}${status}	${area}	${name}	${detail}"$'\n'
 }
 
@@ -100,18 +106,27 @@ section "5. Python modules"
 
 API_PY=".venv/bin/python"
 APP_PY="app/.venv/bin/python"
+: > /tmp/jarvis_modcheck.txt
 
-for mod in requests fastapi uvicorn; do
+for mod in requests fastapi uvicorn pydantic; do
   "$API_PY" -c "import $mod" >/dev/null 2>&1 && \
   record PASS python-module "$mod (api)" "ok" || \
   record WARN python-module "$mod (api)" "missing"
 done
+
+"$API_PY" -m pip check >/tmp/jarvis_api_pipcheck.txt 2>&1 && \
+  record PASS python-module "api package versions" "pip check ok" || \
+  record WARN python-module "api package versions" "$(tr '\n' ' ' < /tmp/jarvis_api_pipcheck.txt)"
 
 for mod in streamlit; do
   "$APP_PY" -c "import $mod" >/dev/null 2>&1 && \
   record PASS python-module "$mod (dashboard)" "ok" || \
   record WARN python-module "$mod (dashboard)" "missing"
 done
+
+"$APP_PY" -m pip check >/tmp/jarvis_app_pipcheck.txt 2>&1 && \
+  record PASS python-module "dashboard package versions" "pip check ok" || \
+  record WARN python-module "dashboard package versions" "$(tr '\n' ' ' < /tmp/jarvis_app_pipcheck.txt)"
 
 while read -r status mod rest; do
   [ -z "${mod:-}" ] && continue
@@ -493,4 +508,4 @@ elif [ "$WARN" -gt 0 ]; then
 else
   log "RESULT=PASS"
   exit 0
-fi 
+fi

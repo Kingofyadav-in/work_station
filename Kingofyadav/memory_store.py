@@ -6,6 +6,7 @@ import json
 import math
 import re
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(__file__).resolve().parent / "memory.db"
 
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_\-]{1,}", re.I)
+_local = threading.local()
 _STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "for", "from", "has", "have",
     "i", "in", "is", "it", "me", "my", "of", "on", "or", "that", "the",
@@ -22,8 +24,11 @@ _STOPWORDS = {
 
 def _connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        _local.conn = conn
     return conn
 
 

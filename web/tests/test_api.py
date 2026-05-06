@@ -43,10 +43,13 @@ def _run_security_headers_middleware() -> dict[str, str]:
         def __init__(self) -> None:
             self.headers: dict[str, str] = {}
 
+    req = MagicMock()
+    req.headers = {}
+
     async def call_next(request):
         return _Response()
 
-    response = asyncio.run(api.add_security_headers(MagicMock(), call_next))
+    response = asyncio.run(api.add_security_headers(req, call_next))
     return response.headers
 
 
@@ -157,11 +160,24 @@ class HttpEndpointTests(unittest.TestCase):
         headers = _run_security_headers_middleware()
         self.assertEqual(headers.get("X-Content-Type-Options"), "nosniff")
         self.assertEqual(headers.get("X-Frame-Options"), "DENY")
+        self.assertRegex(headers.get("X-Request-ID", ""), r"^[a-f0-9]{12}$")
 
     def test_oversized_body_response_has_security_headers(self) -> None:
         response = _run_body_limit_request(api._MAX_BODY_BYTES + 1)
         self.assertEqual(response.status_code, 413)
         self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertRegex(response.headers.get("X-Request-ID", ""), r"^[a-f0-9]{12}$")
+
+    def test_local_admin_origin_rejects_referer_prefix_bypass(self) -> None:
+        with patch.object(api, "_ALLOWED_ORIGIN", "https://kingofyadav.in"), \
+             patch.object(api, "_ALLOWED_ORIGINS", ["https://kingofyadav.in"]):
+            self.assertFalse(api._origin_allowed("", "https://kingofyadav.in.attacker.com/admin"))
+
+    def test_local_admin_origin_allows_configured_origin_and_localhost(self) -> None:
+        with patch.object(api, "_ALLOWED_ORIGIN", "https://kingofyadav.in"), \
+             patch.object(api, "_ALLOWED_ORIGINS", ["https://kingofyadav.in"]):
+            self.assertTrue(api._origin_allowed("https://kingofyadav.in", ""))
+            self.assertTrue(api._origin_allowed("http://localhost:8080", ""))
 
 
 # ── Business logic unit tests ──────────────────────────────────────────────────

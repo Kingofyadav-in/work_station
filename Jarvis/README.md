@@ -42,6 +42,8 @@ Unknown phrases are routed to AI automatically, so conversational prompts still 
 | `voice_input.py` | Speech recognition, wake phrase loop, text passthrough mode |
 | `plugin_loader.py` | Drop-in command plugins from `Jarvis/skills/*.py` |
 | `intro_app.py` | Tkinter desktop control surface |
+| `context.py` | Shared runtime context: profile snapshot, activity log, system state |
+| `system_info.py` | Hardware, OS, network, environment, and software inventory |
 | `tools/mic_test.py` | Microphone discovery and capture testing |
 
 ## Running Commands

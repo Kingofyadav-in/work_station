@@ -46,6 +46,18 @@ SAFE_COMMANDS = {
     "ls": {"flags": {"-1", "-a", "-l", "-la", "-al"}, "allow_path": True},
 }
 
+_DESKTOP_ACTION_TIMEOUT = 5
+
+
+def _run_desktop_action(command: list[str], success_message: str) -> str:
+    try:
+        subprocess.run(command, timeout=_DESKTOP_ACTION_TIMEOUT, check=False)
+    except subprocess.TimeoutExpired:
+        return f"Command timed out after {_DESKTOP_ACTION_TIMEOUT}s: {command[0]}"
+    except Exception as exc:
+        return f"Command failed: {exc}"
+    return success_message
+
 
 def describe_identity() -> str:
     context = get_runtime_context(log_limit=5)
@@ -556,23 +568,19 @@ def search_memory_entries(query: str) -> str:
 
 
 def volume_up() -> str:
-    subprocess.Popen(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+10%"])
-    return "Volume increased."
+    return _run_desktop_action(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+10%"], "Volume increased.")
 
 
 def volume_down() -> str:
-    subprocess.Popen(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-10%"])
-    return "Volume decreased."
+    return _run_desktop_action(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-10%"], "Volume decreased.")
 
 
 def mute_volume() -> str:
-    subprocess.Popen(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"])
-    return "Volume toggled."
+    return _run_desktop_action(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"], "Volume toggled.")
 
 
 def lock_screen() -> str:
-    subprocess.Popen(["loginctl", "lock-session"])
-    return "Locking screen."
+    return _run_desktop_action(["loginctl", "lock-session"], "Locking screen.")
 
 
 def battery_status() -> str:
@@ -598,21 +606,18 @@ def disk_status() -> str:
 
 
 def open_terminal() -> str:
-    subprocess.Popen(["gnome-terminal"])
-    return "Opening terminal."
+    return _run_desktop_action(["gnome-terminal"], "Opening terminal.")
 
 
 def open_chrome() -> str:
     for binary in ("google-chrome", "google-chrome-stable", "chromium-browser", "chromium"):
         if shutil.which(binary):
-            subprocess.Popen([binary])
-            return "Opening Chrome."
+            return _run_desktop_action([binary], "Opening Chrome.")
     return "Chrome not found. Install google-chrome or chromium."
 
 
 def open_files() -> str:
-    subprocess.Popen(["nautilus"])
-    return "Opening Files."
+    return _run_desktop_action(["nautilus"], "Opening Files.")
 
 
 def _path_allowed(token: str) -> bool:

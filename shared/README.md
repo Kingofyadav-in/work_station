@@ -13,6 +13,10 @@ Shared infrastructure for the Jarvis Platform. This package contains transport, 
 | `event_journal.py` | Append-only audit event writer and query helpers |
 | `file_lock.py` | `fcntl` exclusive lock context manager |
 | `bus_health.py` | CLI diagnostics for pending, processed, dead-letter, and listener state |
+| `identity.py` | Stable ID generation, fingerprinting, host info, and connectivity check |
+| `listener_status.py` | PID-file helpers and process detection for the Kingofyadav listener |
+| `local_admin_registry.py` | Append-only registry for browser-local admin sync snapshots |
+| `public_intake.py` | Storage and retrieval for public enquiry and signup form submissions |
 
 Runtime paths:
 

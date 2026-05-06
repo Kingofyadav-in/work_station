@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any, AsyncGenerator
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -164,6 +165,25 @@ def _utc_now() -> str:
 
 def _request_id() -> str:
     return uuid.uuid4().hex[:12]
+
+
+def _origin_allowed(origin: str, referer: str) -> bool:
+    check = (origin or referer).strip()
+    if not check:
+        return True
+    try:
+        parsed = urlparse(check)
+    except Exception:
+        return False
+    if not parsed.scheme or not parsed.netloc:
+        return False
+
+    allowed_origins = set(_ALLOWED_ORIGINS)
+    allowed_origins.add(_ALLOWED_ORIGIN)
+    normalized = f"{parsed.scheme}://{parsed.netloc}"
+    if normalized in allowed_origins:
+        return True
+    return (parsed.hostname or "").lower() in _LOCALHOST_ADDRS
 
 
 def _read_json(path: Path) -> dict:
@@ -877,13 +897,15 @@ app.add_middleware(
     allow_origins=_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Api-Key"],
-    expose_headers=["Vary"],
+    expose_headers=["Vary", "X-Request-ID"],
 )
 
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    request_id = (request.headers.get("X-Request-ID") or "").strip() or _request_id()
     response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "0"
@@ -900,6 +922,7 @@ async def limit_body_size(request: Request, call_next):
                     status_code=413,
                     content={"error": f"request body too large (max {_MAX_BODY_BYTES} bytes)"},
                     headers={
+                        "X-Request-ID": (request.headers.get("X-Request-ID") or "").strip() or _request_id(),
                         "X-Content-Type-Options": "nosniff",
                         "X-Frame-Options": "DENY",
                         "X-XSS-Protection": "0",
@@ -1359,9 +1382,7 @@ async def local_admin_sync(body: LocalAdminSyncBody, request: Request):
         raise HTTPException(status_code=429, detail=f"rate limit exceeded — {_LOCAL_ADMIN_SYNC_RPM} rpm")
     origin = (request.headers.get("origin") or "").strip()
     referer = (request.headers.get("referer") or "").strip()
-    if origin and origin != _ALLOWED_ORIGIN:
-        raise HTTPException(status_code=403, detail="origin not allowed")
-    if not origin and referer and not referer.startswith(_ALLOWED_ORIGIN):
+    if not _origin_allowed(origin, referer):
         raise HTTPException(status_code=403, detail="origin not allowed")
     username = body.username.strip().lower()
     if not username:

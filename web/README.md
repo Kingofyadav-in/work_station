@@ -52,6 +52,9 @@ JARVIS_PUBLIC_SITE_ROOT=/home/kingofyadav/HI
 JARVIS_PUBLIC_CHAT_PROMPT=                 # custom system prompt (uses built-in default if blank)
 JARVIS_PUBLIC_CHAT_PROVIDER=               # pin to ollama/openai/anthropic (blank = global selector)
 JARVIS_PUBLIC_CHAT_MODEL=                  # pin model (blank = global selector)
+
+# Live class feature (optional)
+LIVE_CLASS_TOKEN=                          # token required to POST /api/live-class state updates
 ```
 
 When `JARVIS_API_KEY` is empty, private endpoints are available only from localhost. When a key or scoped token is configured, use `Authorization: Bearer <token>` or `X-Api-Key: <token>`.
@@ -113,6 +116,8 @@ Scoped token file example:
 | `POST` | `/api/jarvis-chat` | conditional | Website-safe public chat |
 | `POST` | `/api/public-enquiry` | no | Public enquiry form submission |
 | `POST` | `/api/public-signup` | no | Public signup / access request |
+| `GET` | `/api/live-class` | no | Live class public state |
+| `POST` | `/api/live-class` | token | Update live class state (requires `LIVE_CLASS_TOKEN`) |
 | `GET` | `/api/docs` | no | OpenAPI UI |
 
 ## Examples

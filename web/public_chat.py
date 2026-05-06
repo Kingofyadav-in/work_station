@@ -4,6 +4,7 @@ import atexit
 import concurrent.futures
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
@@ -17,6 +18,7 @@ STATE_PATH = ROOT_DIR / "Kingofyadav" / "state.json"
 PUBLIC_CHAT_LOG = ROOT_DIR / "logs" / "public_chat.jsonl"
 PUBLIC_CHAT_CONFIG = ROOT_DIR / "logs" / "public_chat_config.json"
 PUBLIC_SITE_ROOT = Path(os.getenv("JARVIS_PUBLIC_SITE_ROOT", str(ROOT_DIR.parent / "HI")))
+logger = logging.getLogger(__name__)
 
 _JARVIS_DIR = ROOT_DIR / "Jarvis"
 _SHARED_DIR = ROOT_DIR / "shared"
@@ -188,6 +190,7 @@ def _site_text(path: Path, *, max_chars: int = 900) -> str:
     try:
         raw = path.read_text(encoding="utf-8", errors="ignore")
     except Exception:
+        logger.warning("Public chat knowledge file missing or unreadable: %s", path)
         return ""
     if path.suffix.lower() == ".json":
         try:
@@ -365,10 +368,14 @@ def run_public_chat(message: str, *, client_ip: str = "", history: list[dict[str
         return {"ok": False, "request_id": rid, "error": "message is required", "ts": _utc_now()}
     if not _JARVIS_OK:
         return {"ok": False, "request_id": rid, "error": f"AI connector unavailable: {_JARVIS_ERR}", "ts": _utc_now()}
-    assert get_active_provider is not None
-    assert get_active_model is not None
-    assert provider_status is not None
-    assert ai_status is not None
+    if get_active_provider is None:
+        raise RuntimeError("AI connector loaded without get_active_provider")
+    if get_active_model is None:
+        raise RuntimeError("AI connector loaded without get_active_model")
+    if provider_status is None:
+        raise RuntimeError("AI connector loaded without provider_status")
+    if ai_status is None:
+        raise RuntimeError("AI connector loaded without ai_status")
 
     if _is_injection_attempt(message):
         _log_public_chat({

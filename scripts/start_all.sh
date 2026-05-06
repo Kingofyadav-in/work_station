@@ -25,5 +25,10 @@ start_bg() {
 }
 
 start_bg "Kingofyadav" "${ROOT_DIR}/Kingofyadav" "${LOG_DIR}/kingofyadav.log"
-sleep 1
+for _ in $(seq 1 15); do
+  [[ -f "${LOG_DIR}/kingofyadav.pid" && -d "${ROOT_DIR}/shared/bus" ]] && break
+  sleep 0.5
+done
 start_bg "Jarvis" "${ROOT_DIR}/Jarvis" "${LOG_DIR}/jarvis.log"
+
+echo "Health check: http://${API_HOST:-127.0.0.1}:${API_PORT:-5050}/api/health"
