@@ -183,7 +183,9 @@ def provider_status(provider: str | None = None) -> dict[str, str]:
         if not os.getenv("OPENAI_API_KEY"):
             return {"status": "unconfigured", "message": "OPENAI_API_KEY not set in .env"}
         m = get_active_model() if p == get_active_provider() else PROVIDERS["openai"]["default"]
-        return {"status": "ready", "message": f"OpenAI · {m}"}
+        base_url = os.getenv("OPENAI_BASE_URL", "").strip()
+        label = "Groq" if "groq.com" in base_url else "OpenAI"
+        return {"status": "ready", "message": f"{label} · {m}"}
 
     if p == "anthropic":
         try:
@@ -330,7 +332,8 @@ def _build_messages(system_prompt: str, user_prompt: str) -> list[dict]:
 def _call_model(system_prompt: str, messages: list[dict], provider: str, model: str) -> str:
     if provider == "openai":
         from openai import OpenAI
-        content = OpenAI().chat.completions.create(
+        _base_url = os.getenv("OPENAI_BASE_URL", "").strip() or None
+        content = OpenAI(base_url=_base_url).chat.completions.create(
             model=model,
             messages=cast(Any, messages),
         ).choices[0].message.content
