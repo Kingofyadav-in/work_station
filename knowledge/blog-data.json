@@ -1,0 +1,162 @@
+[
+  {
+    "title": "AI & The Future of Work: What No One Is Telling You",
+    "category": "Technology",
+    "excerpt": "Artificial intelligence is not coming for jobs. It already arrived. The real question is whether humanity will adapt fast enough — or be left behind by a system it created.",
+    "image": "/images/blog/ai-future-of-work.svg",
+    "url": "/blog/ai-future-of-work.html",
+    "date": "2026-04-15"
+  },
+  {
+    "title": "India Rising: Why the 21st Century Belongs to Us",
+    "category": "Geopolitics",
+    "excerpt": "India's economic, military, and technological trajectory is undeniable. Here's why the 21st century belongs to India — and what must happen to secure that future.",
+    "image": "/images/blog/india-rising.svg",
+    "url": "/blog/india-rising-global-superpower.html",
+    "date": "2026-04-12"
+  },
+  {
+    "title": "Building Digital Identity From Scratch",
+    "category": "Digital",
+    "excerpt": "How structured digital presence creates long-term personal and professional authority in a crowded online world.",
+    "image": "/images/blog/building-digital-identity.svg",
+    "url": "/blog/building-digital-identity.html",
+    "date": "2026-04-10"
+  },
+  {
+    "title": "Climate Crisis 2025: The Last Window for Action",
+    "category": "Environment",
+    "excerpt": "The IPCC calls the next decade our final realistic opportunity to keep global warming below 1.5°C. What that means for nations, businesses, and every individual alive today.",
+    "image": "/images/blog/climate-crisis.svg",
+    "url": "/blog/climate-crisis-2025.html",
+    "date": "2026-04-08"
+  },
+  {
+    "title": "Mental Health: The Silent Epidemic the World Is Finally Talking About",
+    "category": "Health",
+    "excerpt": "One billion people worldwide live with a mental health condition. The pandemic accelerated the crisis. The stigma persists. And the systems meant to help are woefully underprepared.",
+    "image": "/images/blog/mental-health.svg",
+    "url": "/blog/mental-health-global-epidemic.html",
+    "date": "2026-04-05"
+  },
+  {
+    "title": "Geopolitics 2025: Mapping a World in Fracture",
+    "category": "Geopolitics",
+    "excerpt": "US-China rivalry, Russia's war in Ukraine, the rise of the Global South — the world order is fracturing. A clear-eyed map of where we are and what comes next.",
+    "image": "/images/blog/geopolitics-2025.svg",
+    "url": "/blog/geopolitics-2025.html",
+    "date": "2026-04-02"
+  },
+  {
+    "title": "The Creator Economy: How Individuals Are Winning the Attention War",
+    "category": "Digital",
+    "excerpt": "A $500 billion industry built by individuals with cameras, keyboards, and ideas. The creator economy has democratized media, disrupted industries, and created a new definition of success.",
+    "image": "/images/blog/creator-economy.svg",
+    "url": "/blog/creator-economy-power-shift.html",
+    "date": "2026-03-28"
+  },
+  {
+    "title": "Electric Vehicles & The Clean Energy Revolution",
+    "category": "Technology",
+    "excerpt": "EVs crossed 20% of global new car sales in 2024. Solar became the cheapest electricity source in history. The clean energy transition is now the present reality reshaping economies.",
+    "image": "/images/blog/electric-vehicles.svg",
+    "url": "/blog/electric-vehicles-clean-energy.html",
+    "date": "2026-03-22"
+  },
+  {
+    "title": "Community Leadership Principles",
+    "category": "Leadership",
+    "excerpt": "Core principles that define effective and responsible community leadership in modern India.",
+    "image": "/images/blog/community-leadership.svg",
+    "url": "/blog/community-leadership-principles.html",
+    "date": "2026-03-20"
+  },
+  {
+    "title": "Digital Privacy & Surveillance Capitalism: You Are the Product",
+    "category": "Technology",
+    "excerpt": "Your data is the product. Surveillance capitalism is the business model. Here's how big tech built the most sophisticated behavior modification system in history.",
+    "image": "/images/blog/digital-privacy.svg",
+    "url": "/blog/digital-privacy-surveillance.html",
+    "date": "2026-03-18"
+  },
+  {
+    "title": "Youth Leadership: Why the Next Generation Must Lead Differently",
+    "category": "Leadership",
+    "excerpt": "The challenges of the 21st century cannot be solved with the leadership models of the 20th. Young leaders must build something genuinely new — and the stakes could not be higher.",
+    "image": "/images/blog/youth-leadership.svg",
+    "url": "/blog/youth-leadership-new-era.html",
+    "date": "2026-03-14"
+  },
+  {
+    "title": "Why Youth Need Structured Guidance",
+    "category": "Youth",
+    "excerpt": "The critical role of structured mentorship and discipline in shaping the next generation of leaders.",
+    "image": "/images/blog/youth-guidance.svg",
+    "url": "/blog/youth-structured-guidance.html",
+    "date": "2026-03-10"
+  },
+  {
+    "title": "Web3 & The Decentralized Future: Separating Promise from Hype",
+    "category": "Technology",
+    "excerpt": "The 2021-2022 crypto boom produced spectacular crashes. It also produced foundational technology that is quietly reshaping finance, identity, and ownership. Here's what's actually real.",
+    "image": "/images/blog/web3.svg",
+    "url": "/blog/web3-decentralized-future.html",
+    "date": "2026-03-10"
+  },
+  {
+    "title": "The Entrepreneurship Mindset in 2025: What Actually Works",
+    "category": "Strategy",
+    "excerpt": "Starting a business in 2025 is easier than ever — and harder than ever. Here's the real mindset, strategy, and discipline required to build something lasting in the modern economy.",
+    "image": "/images/blog/entrepreneurship.svg",
+    "url": "/blog/entrepreneurship-mindset-2025.html",
+    "date": "2026-03-06"
+  },
+  {
+    "title": "The Future of Education: Why the Old System Is Failing",
+    "category": "Education",
+    "excerpt": "A system designed to train factory workers is being asked to prepare people for a world AI is transforming. The mismatch is catastrophic — and the solutions are radical.",
+    "image": "/images/blog/future-of-education.svg",
+    "url": "/blog/future-of-education.html",
+    "date": "2026-03-02"
+  },
+  {
+    "title": "Leadership In The Modern Era",
+    "category": "Leadership",
+    "excerpt": "Understanding leadership principles that guide modern organizations and governments toward lasting impact.",
+    "image": "/images/blog/leadership-modern.svg",
+    "url": "/blog/leadership-modern-era.html",
+    "date": "2026-03-01"
+  },
+  {
+    "title": "The Role of NGOs in Modern India",
+    "category": "Social",
+    "excerpt": "How non-governmental organizations drive real social change at the grassroots and national level.",
+    "image": "/images/blog/ngos-india.svg",
+    "url": "/blog/ngos-modern-india.html",
+    "date": "2026-02-20"
+  },
+  {
+    "title": "Technology & Future Systems",
+    "category": "Technology",
+    "excerpt": "How emerging technologies will shape governance, society, and economic systems in the next decade.",
+    "image": "/images/blog/tech-future.svg",
+    "url": "/blog/technology-future-systems.html",
+    "date": "2026-02-15"
+  },
+  {
+    "title": "Governance In The Digital Age",
+    "category": "Governance",
+    "excerpt": "Exploring policy frameworks, leadership structure, and the future of digital governance in India.",
+    "image": "/images/blog/governance-digital.svg",
+    "url": "/blog/governance-digital-age.html",
+    "date": "2026-02-01"
+  },
+  {
+    "title": "The Power Of Long-Term Thinking",
+    "category": "Strategy",
+    "excerpt": "Why long-term strategic thinking is the foundation of powerful, sustainable leadership and meaningful results.",
+    "image": "/images/blog/long-term-thinking.svg",
+    "url": "/blog/long-term-thinking.html",
+    "date": "2026-01-20"
+  }
+]
