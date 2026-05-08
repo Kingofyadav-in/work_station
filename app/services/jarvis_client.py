@@ -67,3 +67,18 @@ def run_command(command: str) -> dict[str, Any]:
         "duration_ms": round((time.perf_counter() - started) * 1000, 1),
         "ok": bool(result.get("ok")),
     }
+
+
+def run_ai_stream(prompt: str):
+    """Generator that yields AI response chunks for streaming display."""
+    import sys
+    from pathlib import Path
+    _ai_dir = Path(__file__).resolve().parents[2] / "Jarvis"
+    if str(_ai_dir) not in sys.path:
+        sys.path.insert(0, str(_ai_dir))
+    from ai_connector import ai_status, ask_ai_stream
+    status = ai_status()
+    if status.get("status") != "ready":
+        yield f"[AI unavailable: {status.get('message', 'check ai status')}]"
+        return
+    yield from ask_ai_stream(prompt.strip())

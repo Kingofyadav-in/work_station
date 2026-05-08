@@ -241,14 +241,34 @@ def search_memories(query: str, limit: int = 10) -> list[dict[str, Any]]:
     scored: list[tuple[float, sqlite3.Row]] = []
     with _connect() as conn:
         rows = conn.execute("SELECT * FROM memories").fetchall()
+    from datetime import datetime, timezone as _tz
+    _now_ts = datetime.now(_tz.utc).timestamp()
     for row in rows:
         vector = json.loads(row["token_vector"] or "{}")
         score = _cosine(query_vector, vector)
-        if query_lower in row["search_text"].lower():
-            score += 0.35
+        # exact phrase match
+        row_text_lower = row["search_text"].lower()
+        if query_lower in row_text_lower:
+            score += 0.45
+        # partial word match bonus
+        for token in tokenize(query_lower):
+            if token in row_text_lower:
+                score += 0.08
+        # tag match
         if row["tag"] and row["tag"].lower() in query_lower:
-            score += 0.2
-        score += 0.03 * int(row["importance"])
+            score += 0.25
+        # importance boost
+        score += 0.04 * int(row["importance"])
+        # recency boost (decay over ~30 days)
+        try:
+            created = datetime.fromisoformat(str(row["created_at"]).rstrip("Z").replace("Z", "+00:00"))
+            age_days = (_now_ts - created.timestamp()) / 86400
+            score += max(0.0, 0.1 * (1.0 - age_days / 30.0))
+        except Exception:
+            pass
+        # public visibility boost
+        if row["visibility"] == "public":
+            score += 0.05
         if score > 0:
             scored.append((score, row))
     scored.sort(key=lambda item: (item[0], item[1]["created_at"]), reverse=True)

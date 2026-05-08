@@ -88,6 +88,7 @@ _TOKEN_CACHE: tuple[float, list[dict[str, Any]]] = (0.0, [])
 _LIVE_CLASS_LOCK = Lock()
 _LIVE_CLASS_STATE: dict[str, Any] | None = None
 _LIVE_CLASS_TOKEN = os.getenv("LIVE_CLASS_TOKEN", "").strip()
+_LIVE_CLASS_SUBSCRIBERS: set[asyncio.Queue] = set()
 
 
 # ── Jarvis router import (graceful fallback) ───────────────────────────────────
@@ -621,6 +622,19 @@ def _live_class_save_state(state: dict[str, Any]) -> None:
         pass
 
 
+def _live_class_broadcast(state: dict[str, Any]) -> None:
+    """Push updated state to all WebSocket subscribers (fire-and-forget)."""
+    payload = json.dumps(_live_class_public_state(state), ensure_ascii=False, default=str)
+    dead: list[asyncio.Queue] = []
+    for q in _LIVE_CLASS_SUBSCRIBERS:
+        try:
+            q.put_nowait(payload)
+        except Exception:
+            dead.append(q)
+    for q in dead:
+        _LIVE_CLASS_SUBSCRIBERS.discard(q)
+
+
 def _live_class_token_from_request(request: Request, body: dict[str, Any]) -> str:
     auth = str(request.headers.get("authorization", ""))
     if auth.lower().startswith("bearer "):
@@ -767,6 +781,7 @@ def update_live_class_state(body: dict[str, Any], request: Request) -> dict[str,
         if action == "join":
             updated = _live_class_join_viewer(state, body, request)
             _live_class_save_state(updated)
+            _live_class_broadcast(updated)
             return _live_class_public_state(updated)
 
         expected = _LIVE_CLASS_TOKEN or _API_KEY
@@ -777,6 +792,7 @@ def update_live_class_state(body: dict[str, Any], request: Request) -> dict[str,
 
         updated = _live_class_apply_action(state, body, request)
         _live_class_save_state(updated)
+        _live_class_broadcast(updated)
         return _live_class_public_state(updated)
 
 
@@ -848,6 +864,7 @@ def get_index() -> dict:
             "GET /api/journal":              "query event journal: ?hours=24&source=Jarvis&type=action_completed&limit=100",
             "WS /api/ws/live":               "authenticated WebSocket live status + state stream",
             "WS /api/ws/public":             "public WebSocket public-state stream",
+            "WS /api/ws/live-class":         "public WebSocket live class push stream",
             "GET /api/docs":                 "interactive OpenAPI documentation",
             "POST /api/command":             'execute a command: {"command": "status"}',
             "POST /api/jarvis-chat":         'public-safe website chat: {"message": "hello"}',
@@ -1259,6 +1276,29 @@ async def ws_live(websocket: WebSocket):
 @app.websocket("/api/ws/public")
 async def ws_public(websocket: WebSocket):
     await _send_live_websocket(websocket, get_public_state, 4.0)
+
+
+@app.websocket("/api/ws/live-class")
+async def ws_live_class(websocket: WebSocket):
+    """WebSocket that pushes live class state to all connected viewers."""
+    await websocket.accept()
+    q: asyncio.Queue = asyncio.Queue(maxsize=32)
+    _LIVE_CLASS_SUBSCRIBERS.add(q)
+    try:
+        # Send current state immediately on connect
+        current = get_live_class_state()
+        await websocket.send_text(json.dumps(current, ensure_ascii=False, default=str))
+        while True:
+            try:
+                payload = await asyncio.wait_for(q.get(), timeout=30.0)
+                await websocket.send_text(payload)
+            except asyncio.TimeoutError:
+                # Send a keepalive ping
+                await websocket.send_text(json.dumps({"ping": True}))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        _LIVE_CLASS_SUBSCRIBERS.discard(q)
 
 
 # ── POST routes ────────────────────────────────────────────────────────────────

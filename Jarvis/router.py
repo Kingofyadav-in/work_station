@@ -71,6 +71,7 @@ HI_INTENTS = {
     "hi_workflow_add_blocker",
     "hi_workflow_set_due",
     "hi_memory_add",
+    "hi_memory_delete",
     "hi_set_domain",
 }
 

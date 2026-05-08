@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import html
 import json
 import os
 import secrets
@@ -87,6 +88,7 @@ _check_password()
 
 from services.jarvis_client import preview_command, run_command
 from services.local_admin_registry import get_local_admin_registry_state
+from services.public_intake import get_public_inbox_state
 from services.model_selector import render_model_selector
 from services.log_reader import read_bus_log
 from services.state_reader import get_dashboard_state
@@ -121,6 +123,7 @@ render_model_selector()
 try:
     state = get_dashboard_state()
     local_admin_state = get_local_admin_registry_state(limit=200)
+    public_inbox_state = get_public_inbox_state(limit=50)
 except Exception as _e:
     st.error(f"Failed to load state: {_e}")
     st.stop()
@@ -209,11 +212,13 @@ with c4:
 with c5:
     render_stat_card("Memory", state["memory_count"], "Curated recall entries")
 with c6:
+    _signup_count = public_inbox_state.get("summary", {}).get("signup_count", 0)
+    _session_count = local_admin_state.get("count", 0)
     render_stat_card(
-        "Sessions",
-        local_admin_state.get("count", 0),
-        "Synced username/device records",
-        tone="ok" if local_admin_state.get("count", 0) else "warn",
+        "Users",
+        f"{_signup_count} signups · {_session_count} sessions",
+        "Public signups + web sessions",
+        tone="ok" if (_signup_count or _session_count) else "warn",
     )
 
 st.divider()
@@ -336,6 +341,23 @@ with left:
             f"Route {result.get('route', 'n/a')} · Action {result.get('parsed_action', 'n/a')}"
         )
 
+    # 5b. Streaming AI chat
+    st.divider()
+    section_label("Ask AI (Streaming)")
+    if "stream_ai_input" not in st.session_state:
+        st.session_state["stream_ai_input"] = ""
+    stream_input = st.text_input(
+        "Ask anything",
+        key="stream_ai_input",
+        placeholder="What should I work on today? · Explain my current workflow · Summarize my memory",
+    )
+    if st.button("Ask AI", key="home_stream_ai_btn", type="secondary", use_container_width=False):
+        if str(stream_input or "").strip():
+            from services.jarvis_client import run_ai_stream
+            with st.spinner(""):
+                st.markdown("**Jarvis:**")
+                st.write_stream(run_ai_stream(str(stream_input).strip()))
+
     # 6. Primary Actions
     section_label("Quick Actions")
     qa1, qa2, qa3 = st.columns(3)
@@ -372,6 +394,41 @@ with right:
         ("Domain",       profile.get("domain", "unknown")),
         ("Email",        profile.get("email", "unknown")),
     ])
+
+    section_label("Users & Signups")
+    _pub_signups = public_inbox_state.get("signups", [])
+    _pub_enquiries = public_inbox_state.get("enquiries", [])
+    _admin_users = local_admin_state.get("items", [])
+    _u1, _u2 = st.columns(2)
+    with _u1:
+        render_stat_card("Signups", len(_pub_signups), "Access requests from website", tone="ok" if _pub_signups else "warn")
+    with _u2:
+        render_stat_card("Active Sessions", local_admin_state.get("active_count", 0), "Login sessions synced", tone="ok" if _admin_users else "warn")
+    if _pub_signups:
+        st.caption("**Recent signups:**")
+        for _s in _pub_signups[:5]:
+            st.markdown(
+                f"- **{html.escape(str(_s.get('name') or 'unnamed'))}** · `{html.escape(str(_s.get('email') or '—'))}` · "
+                f"<span style='color:var(--muted);font-size:0.78rem;'>{str(_s.get('ts',''))[:10]}</span>",
+                unsafe_allow_html=True,
+            )
+    elif _pub_enquiries:
+        st.caption("**Recent enquiries:**")
+        for _e in _pub_enquiries[:3]:
+            st.markdown(
+                f"- **{html.escape(str(_e.get('name') or 'unnamed'))}** — {html.escape(str(_e.get('subject') or '—'))}",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.caption("No public submissions yet. Check pages 9 & 10 for details.")
+    if _admin_users:
+        st.caption("**Latest web session:**")
+        _latest_user = _admin_users[0]
+        render_kv_grid([
+            ("Username", _latest_user.get("username") or "—"),
+            ("Action", _latest_user.get("action") or "—"),
+            ("Last seen", str(_latest_user.get("ts", ""))[:16].replace("T", " ")),
+        ])
 
     section_label("Recent Memory")
     render_memory_cards(state["memory"][-4:])

@@ -345,7 +345,8 @@ def _call_model(system_prompt: str, messages: list[dict], provider: str, model: 
         user_msgs   = [m for m in messages if m["role"] != "system"]
         resp = anthropic.Anthropic().messages.create(
             model=model, max_tokens=4096,
-            system=sys_content, messages=cast(Any, user_msgs),
+            system=[{"type": "text", "text": sys_content, "cache_control": {"type": "ephemeral"}}],
+            messages=cast(Any, user_msgs),
         )
         block = resp.content[0] if resp.content else None
         return str(getattr(block, "text", "") or "")
@@ -372,7 +373,8 @@ def _stream_model(system_prompt: str, messages: list[dict], provider: str, model
         user_msgs   = [m for m in messages if m["role"] != "system"]
         with anthropic.Anthropic().messages.stream(
             model=model, max_tokens=4096,
-            system=sys_content, messages=cast(Any, user_msgs),
+            system=[{"type": "text", "text": sys_content, "cache_control": {"type": "ephemeral"}}],
+            messages=cast(Any, user_msgs),
         ) as s:
             for text in s.text_stream:
                 yield text

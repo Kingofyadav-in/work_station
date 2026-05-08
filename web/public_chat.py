@@ -270,6 +270,35 @@ _KNOWLEDGE_PAGES: list[tuple] = [
 ]
 
 
+def _score_page_relevance(text: str, query_tokens: set[str]) -> float:
+    if not text or not query_tokens:
+        return 0.0
+    text_lower = text.lower()
+    hits = sum(1 for token in query_tokens if token in text_lower)
+    return hits / max(1, len(query_tokens))
+
+
+def _public_site_knowledge_for_query(query: str) -> str:
+    query_tokens = {w.lower() for w in re.split(r'\W+', query) if len(w) > 2}
+    parts: list[str] = []
+    scored_pages: list[tuple[float, str, str]] = []  # (score, label, text)
+    for entry in _KNOWLEDGE_PAGES:
+        label, path = entry[0], entry[1]
+        max_c = entry[2] if len(entry) > 2 else 900
+        text = _site_text(path, max_chars=max_c)
+        if not text:
+            continue
+        score = _score_page_relevance(text, query_tokens)
+        scored_pages.append((score, label, text))
+    # Always include top 3 core pages; fill rest by score
+    core = scored_pages[:3]
+    rest = sorted(scored_pages[3:], key=lambda x: x[0], reverse=True)
+    selected = core + rest[:7]
+    for _, label, text in selected:
+        parts.append(f"[SOURCE: {label}]\n{text}")
+    return "\n\n".join(parts)[:10000]
+
+
 def _public_site_knowledge() -> str:
     global _SITE_KNOWLEDGE_CACHE
     now = time.time()
@@ -407,7 +436,7 @@ def run_public_chat(message: str, *, client_ip: str = "", history: list[dict[str
         return {"ok": False, "request_id": rid, "error": status.get("message", "AI unavailable"), "ts": _utc_now()}
 
     prompt = message.strip()[:_PUBLIC_CHAT_MAX_CHARS]
-    site_knowledge = _public_site_knowledge() or "No website knowledge loaded."
+    site_knowledge = _public_site_knowledge_for_query(prompt) or _public_site_knowledge() or "No website knowledge loaded."
     if provider == "ollama":
         site_knowledge = site_knowledge[:700]
     system_prompt = (

@@ -19,9 +19,7 @@ class ActionTests(unittest.TestCase):
         self.assertIn("outside the Jarvis workspace", actions.execute_shell_command("ls ../"))
 
     @patch("actions.load_profiles")
-    @patch("actions.get_session")
-    @patch("actions.get_system_info")
-    def test_memory_report_contains_expected_fields(self, get_system_info, get_session, load_profiles) -> None:
+    def test_preferences_report_contains_expected_fields(self, load_profiles) -> None:
         load_profiles.return_value = {
             "HI": {
                 "name": "Amit Kumar Yadav",
@@ -34,17 +32,11 @@ class ActionTests(unittest.TestCase):
                 "wake_phrase": "jarvis",
             }
         }
-        get_session.return_value = {
-            "last_command": "status",
-            "last_successful_action": "status",
-        }
-        get_system_info.return_value = {"hostname": "Jarvis"}
-
-        report = actions.get_memory_report()
+        report = actions.get_preferences_report()
         self.assertIn("kingofyadav.in", report)
-        self.assertIn("Preferred Intro Mode: normal", report)
-        self.assertIn("Preferred Response Mode: adaptive", report)
-        self.assertIn("Last Command: status", report)
+        self.assertIn("Intro Mode: normal", report)
+        self.assertIn("Response Mode: adaptive", report)
+        self.assertIn("Wake Phrase: jarvis", report)
 
     def test_set_response_mode_validates_input(self) -> None:
         self.assertIn("adaptive, concise, or detailed", actions.set_response_mode("fast"))
