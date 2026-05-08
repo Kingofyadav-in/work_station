@@ -45,16 +45,13 @@ workflow = state.get("workflow", {})
 memory = state.get("memory", [])
 jarvis_sess = state.get("jarvis_session", {})
 
-section_label("Priority")
-p1, p2, p3 = st.columns(3)
-with p1:
-    render_priority_level("low", "Identity information is reference content.")
-with p2:
-    render_stat_card("Profile", profile.get("display_name") or profile.get("full_name") or profile.get("name", "?"), "Loaded user identity")
-with p3:
+c0, c1, c2 = st.columns(3)
+with c0:
+    render_stat_card("Profile", profile.get("display_name") or profile.get("full_name") or profile.get("name", "?"), "Loaded user identity", tone="ok")
+with c1:
     render_stat_card("Memory", len(memory), "Curated recall entries", tone="ok" if memory else "warn")
-
-section_label("Commands")
+with c2:
+    render_stat_card("Domain", profile.get("domain", "?"), profile.get("auth_role", "primary owner"))
 
 def _run(cmd: str) -> None:
     if not cmd.strip():
@@ -63,13 +60,12 @@ def _run(cmd: str) -> None:
     st.session_state["identity_result"] = r
     push_history(r)
 
-# Primary action buttons
-b1, b2, b3, b4, b5 = st.columns(5)
-if b1.button("My Profile",    key="id_profile",      use_container_width=True): _run("profile")
-if b2.button("My Identity",   key="id_identity",     use_container_width=True): _run("my identity")
-if b3.button("Preferences",   key="id_prefs",        use_container_width=True): _run("preferences")
-if b4.button("Relationship",  key="id_relationship", use_container_width=True): _run("relationship")
-if b5.button("Memory",        key="id_memory",       use_container_width=True): _run("memory")
+section_label("Commands")
+b1, b2, b3, b4 = st.columns(4)
+if b1.button("My Profile",   key="id_profile",      use_container_width=True): _run("profile")
+if b2.button("Preferences",  key="id_prefs",        use_container_width=True): _run("preferences")
+if b3.button("Relationship", key="id_relationship", use_container_width=True): _run("relationship")
+if b4.button("Memory",       key="id_memory",       use_container_width=True): _run("memory")
 
 # Command runner (compact)
 with st.form("identity_cmd", clear_on_submit=False):
@@ -85,8 +81,6 @@ with st.form("identity_cmd", clear_on_submit=False):
 result = st.session_state.get("identity_result")
 if result:
     render_result_with_confirmation(result, _run, key_prefix="identity")
-
-st.divider()
 
 # ── Content ────────────────────────────────────────────────────────────────────
 left, right = st.columns([1.05, 0.95], gap="large")

@@ -56,13 +56,12 @@ blocked_tasks = [task for task in open_tasks if task.get("blockers")]
 work_priority = "high" if blocked_tasks else ("medium" if open_tasks else "low")
 work_priority_detail = f"{len(blocked_tasks)} blocked task(s)." if blocked_tasks else f"{len(open_tasks)} open task(s)."
 
-section_label("Priority")
-p1, p2, p3 = st.columns(3)
-with p1:
+c0, c1, c2 = st.columns(3)
+with c0:
     render_priority_level(work_priority, work_priority_detail)
-with p2:
+with c1:
     render_stat_card("Focus", workflow.get("current_focus") or "not set", f"Status: {workflow.get('status', 'unknown')}", tone="warn")
-with p3:
+with c2:
     render_stat_card("Open Tasks", len(open_tasks), "Tracked unfinished work", tone="warn" if open_tasks else "ok")
 
 def _tts(r: dict) -> None:
@@ -82,14 +81,11 @@ def _run(cmd: str) -> None:
     _tts(r)
 
 section_label("Commands")
-
-# Primary action buttons
-b1, b2, b3, b4, b5 = st.columns(5)
+b1, b2, b3, b4 = st.columns(4)
 if b1.button("Workflow",  key="work_workflow",  use_container_width=True): _run("workflow")
 if b2.button("AI Status", key="work_ai_status", use_container_width=True): _run("ai status")
-if b3.button("Logs",      key="work_logs",      use_container_width=True): _run("logs")
-if b4.button("Context",   key="work_context",   use_container_width=True): _run("context")
-if b5.button("Profiles",  key="work_profiles",  use_container_width=True): _run("profiles")
+if b3.button("Context",   key="work_context",   use_container_width=True): _run("context")
+if b4.button("Logs",      key="work_logs",      use_container_width=True): _run("logs")
 
 # Command runner
 with st.form("work_cmd", clear_on_submit=False):
@@ -106,8 +102,6 @@ with st.form("work_cmd", clear_on_submit=False):
 result = st.session_state.get("work_result")
 if result:
     render_result_with_confirmation(result, _run, key_prefix="work")
-
-st.divider()
 
 # ── Main content ───────────────────────────────────────────────────────────────
 left, right = st.columns([1.4, 1])

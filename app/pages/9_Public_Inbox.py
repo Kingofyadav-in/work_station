@@ -46,9 +46,8 @@ items = summary.get("items", [])
 enquiries = state.get("enquiries", [])
 signups = state.get("signups", [])
 
-section_label("Priority")
 inbox_priority = "medium" if items else "low"
-c0, c1, c2, c3, c4 = st.columns(5)
+c0, c1, c2, c3 = st.columns(4)
 with c0:
     render_priority_level(inbox_priority, f"{summary.get('count', 0)} public submission(s).")
 with c1:
@@ -57,8 +56,6 @@ with c2:
     render_stat_card("Enquiries", summary.get("enquiry_count", 0), "Contact requests")
 with c3:
     render_stat_card("Access", summary.get("signup_count", 0), "Signup / access requests")
-with c4:
-    render_stat_card("Chat", "On" if cfg.get("enabled") else "Off", "Public Jarvis chat")
 
 # ── Daily activity chart ───────────────────────────────────────────────────────
 if items:

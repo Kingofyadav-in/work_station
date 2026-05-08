@@ -38,14 +38,13 @@ render_hero(
 
 cfg = load_config()
 
-section_label("Priority")
 pages = get_knowledge_status()
 loaded = sum(1 for p in pages if p["available"])
 p1, p2, p3 = st.columns(3)
 with p1:
     render_priority_level("medium" if cfg.get("enabled") and not loaded else "low", "Knowledge pages missing." if cfg.get("enabled") and not loaded else "Public chat config loaded.")
 with p2:
-    render_stat_card("Public Chat", "On" if cfg.get("enabled") else "Off", "Website assistant")
+    render_stat_card("Public Chat", "On" if cfg.get("enabled") else "Off", "Website assistant", tone="ok" if cfg.get("enabled") else "warn")
 with p3:
     render_stat_card("Knowledge", f"{loaded} / {len(pages)}", "Loaded source pages", tone="ok" if loaded else "warn")
 

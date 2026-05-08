@@ -47,7 +47,6 @@ def _run(cmd: str) -> None:
     st.session_state["security_result"] = r
     push_history(r)
 
-section_label("Priority")
 p1, p2, p3 = st.columns(3)
 with p1:
     render_priority_level("high" if pending_action else "low", "Confirmation is waiting." if pending_action else "No pending confirmation.")
@@ -102,8 +101,6 @@ with st.form("security_cmd", clear_on_submit=False):
 result = st.session_state.get("security_result")
 if result:
     render_result_with_confirmation(result, _run, key_prefix="security")
-
-st.divider()
 
 # ── Main content ───────────────────────────────────────────────────────────────
 left, right = st.columns([1.05, 0.95], gap="large")

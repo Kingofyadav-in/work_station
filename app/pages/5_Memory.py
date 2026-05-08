@@ -106,25 +106,17 @@ render_hero(
 )
 render_live_strip(state)
 
-# ── Priority + stats row ───────────────────────────────────────────────────────
-section_label("Priority")
-c0, c1, c2, c3, c4 = st.columns(5)
+# ── Stat row ──────────────────────────────────────────────────────────────────
+last_ts = memory[-1].get("created_at", "none")[:19].replace("T", " ") if memory else "none"
+c0, c1, c2, c3 = st.columns(4)
 with c0:
     render_priority_level("medium" if not memory else "low", "Add memory when context is missing." if not memory else "Curated entries available.")
 with c1:
     render_stat_card("Total", len(memory), "All entries", tone="ok" if memory else "warn")
 with c2:
-    render_stat_card(
-        "Showing",
-        len(filtered),
-        f"{date_filter} · {selected_type}",
-        tone="ok" if filtered else "warn",
-    )
+    render_stat_card("Showing", len(filtered), f"{date_filter} · {selected_type}", tone="ok" if filtered else "warn")
 with c3:
-    last_ts = memory[-1].get("created_at", "none")[:19].replace("T", " ") if memory else "none"
-    render_stat_card("Last Added", last_ts, "Most recent note")
-with c4:
-    render_stat_card("Types", len(all_types), ", ".join(all_types) if all_types else "none")
+    render_stat_card("Last Added", last_ts, f"{len(all_types)} type(s): {', '.join(all_types[:3])}")
 
 st.caption(f"Snapshot: {state.get('fetched_at', 'n/a')[:19].replace('T', ' ')}")
 
@@ -165,8 +157,6 @@ with st.form("memory_cmd", clear_on_submit=False):
 result = st.session_state.get("memory_result")
 if result:
     render_result_with_confirmation(result, _run, key_prefix="memory")
-
-st.divider()
 
 # ── Main content ───────────────────────────────────────────────────────────────
 left, right = st.columns([1.05, 0.95], gap="large")

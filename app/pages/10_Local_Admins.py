@@ -33,16 +33,15 @@ render_hero(
     eyebrow="Auth Registry",
 )
 
-section_label("Priority")
+latest = state.get("latest", {})
 c0, c1, c2, c3 = st.columns(4)
 with c0:
     render_priority_level("medium" if items else "low", f"{state.get('count', 0)} synced session(s).")
 with c1:
     render_stat_card("Sessions", state.get("count", 0), "Unique username/device records", tone="ok" if items else "warn")
 with c2:
-    render_stat_card("Active", state.get("active_count", 0), "Current active records")
+    render_stat_card("Active", state.get("active_count", 0), "Current active records", tone="ok" if state.get("active_count") else "warn")
 with c3:
-    latest = state.get("latest", {})
     render_stat_card("Latest", latest.get("action", "none"), latest.get("username", "none"))
 
 left, right = st.columns([1.2, 0.8], gap="large")
@@ -74,7 +73,6 @@ with left:
 
 with right:
     section_label("Latest Snapshot")
-    latest = state.get("latest", {})
     if latest:
         render_kv_grid([
             ("Username", latest.get("username", "none")),

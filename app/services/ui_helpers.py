@@ -149,9 +149,11 @@ div[data-testid="stMainBlockContainer"] {
 
 /* Critical fix: header is fixed ~3.75rem tall — push content below it */
 .block-container {
-    padding-top: 5.25rem !important;
-    padding-bottom: 3.25rem !important;
-    max-width: 1360px;
+    padding-top: 5.5rem !important;
+    padding-bottom: 4rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 1480px;
 }
 
 /* Block wrappers — prevent white leaking through */
@@ -162,11 +164,11 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 }
 
 div[data-testid="stVerticalBlock"] {
-    gap: 1.15rem !important;
+    gap: 0.85rem !important;
 }
 
 div[data-testid="stHorizontalBlock"] {
-    gap: 1.25rem !important;
+    gap: 1rem !important;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -775,10 +777,10 @@ div[data-testid="stToast"] {
 .jarvis-hero {
     border: 1px solid var(--line-strong);
     background: var(--hero-bg);
-    border-radius: 20px;
-    padding: 1.6rem 2rem 1.5rem;
+    border-radius: 24px;
+    padding: 2rem 2.4rem 1.9rem;
     box-shadow: var(--hero-shadow);
-    margin-bottom: 1.15rem;
+    margin-bottom: 1.4rem;
     position: relative;
     overflow: hidden;
 }
@@ -826,13 +828,13 @@ div[data-testid="stToast"] {
     border-radius: 999px;
 }
 .jarvis-title {
-    font-size: 1.9rem;
-    line-height: 1.08;
-    margin: 0 0 0.4rem;
+    font-size: 2.1rem;
+    line-height: 1.06;
+    margin: 0 0 0.5rem;
     font-weight: 900;
     color: var(--text);
     position: relative;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
 }
 .jarvis-subtitle {
     color: var(--muted);
@@ -847,38 +849,41 @@ div[data-testid="stToast"] {
     border: 1px solid var(--line);
     background: var(--panel);
     color: var(--text);
-    border-radius: 16px;
-    padding: 1rem 1.1rem;
-    margin: 0 0 1rem;
+    border-radius: 20px;
+    padding: 1.4rem 1.55rem;
+    margin: 0 0 0.75rem;
     box-shadow: var(--card-shadow);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 .jarvis-card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.11);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
     border-color: var(--line-strong);
+    transform: translateY(-1px);
 }
-.jarvis-card + .jarvis-card { margin-top: 0.35rem; }
+.jarvis-card + .jarvis-card { margin-top: 0.25rem; }
 .jarvis-card-title {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.15em;
     color: var(--muted);
-    margin-bottom: 0.34rem;
+    margin-bottom: 0.5rem;
     font-weight: 700;
 }
 .jarvis-card-value {
-    font-size: 1.3rem;
+    font-size: 1.55rem;
     font-weight: 800;
     line-height: 1.15;
     color: var(--text);
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    word-break: break-word;
 }
 .jarvis-card-hint {
-    margin-top: 0.35rem;
+    margin-top: 0.45rem;
     color: var(--muted2);
-    font-size: 0.8rem;
+    font-size: 0.79rem;
+    line-height: 1.4;
 }
 .jarvis-card-ok   { border-left: 3px solid var(--green); }
 .jarvis-card-warn { border-left: 3px solid var(--gold-light);  }
@@ -904,10 +909,10 @@ div[data-testid="stToast"] {
 /* Section label */
 .jarvis-section-label {
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 0.65rem;
+    letter-spacing: 0.17em;
+    font-size: 0.67rem;
     color: var(--muted);
-    margin: 1.35rem 0 0.7rem;
+    margin: 2rem 0 0.9rem;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -923,15 +928,15 @@ div[data-testid="stToast"] {
 /* KV grid */
 .jarvis-kv {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-    gap: 0.8rem;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.85rem;
     color: var(--text);
 }
 .jarvis-kv-item {
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 16px;
     background: var(--panel);
-    padding: 0.82rem 0.95rem;
+    padding: 1rem 1.1rem;
     transition: background 0.15s;
 }
 .jarvis-kv-item:hover { background: var(--panel-hover); }
@@ -1081,6 +1086,34 @@ div[data-testid="stToast"] {
     white-space: pre-wrap;
     word-break: break-word;
     box-shadow: var(--card-shadow);
+}
+
+/* Content group container — use to visually group related sections */
+.jarvis-group {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 1.4rem 1.6rem 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    margin-bottom: 0.85rem;
+}
+.jarvis-group-label {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.64rem;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+}
+
+/* Command input area */
+.jarvis-cmd-area {
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 20px;
+    padding: 1.2rem 1.5rem 0.8rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 0.85rem;
 }
 
 /* ═══════════════════════════════════════════════════

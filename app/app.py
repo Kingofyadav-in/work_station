@@ -173,12 +173,12 @@ render_hero(
 )
 render_live_strip(state)
 
-# ── Priority + stat row ────────────────────────────────────────────────────────
+# ── Top stat row — 4 key health indicators ────────────────────────────────────
 
 home_priority = "high" if _alerts else "low"
-home_priority_detail = "Resolve active alerts first." if _alerts else "No blocking alerts."
+home_priority_detail = "Resolve active alerts first." if _alerts else "All systems clear."
 
-c0, c1, c2, c3, c4, c5, c6 = st.columns(7)
+c0, c1, c2, c3 = st.columns(4)
 with c0:
     render_priority_level(home_priority, home_priority_detail)
 with c1:
@@ -198,78 +198,18 @@ with c2:
     )
 with c3:
     render_stat_card(
-        "Current Focus",
+        "Focus",
         state["workflow"].get("current_focus") or "none",
-        "Active workflow priority",
+        f"Mode: {state['preferences'].get('response_mode', 'unknown')}",
         tone="warn",
     )
-with c4:
-    render_stat_card(
-        "Response Mode",
-        state["preferences"].get("response_mode", "unknown"),
-        "HI preference",
-    )
-with c5:
-    render_stat_card("Memory", state["memory_count"], "Curated recall entries")
-with c6:
-    _signup_count = public_inbox_state.get("summary", {}).get("signup_count", 0)
-    _session_count = local_admin_state.get("count", 0)
-    render_stat_card(
-        "Users",
-        f"{_signup_count} signups · {_session_count} sessions",
-        "Public signups + web sessions",
-        tone="ok" if (_signup_count or _session_count) else "warn",
-    )
-
-st.divider()
 
 # ── Main layout ────────────────────────────────────────────────────────────────
 left, right = st.columns([1.5, 1])
 
 with left:
-    # 1. Real User Profile
     profile = state.get("profile", {})
-    section_label("User Profile")
-    p1, p2, p3 = st.columns(3)
-    with p1:
-        render_stat_card(
-            "Owner",
-            profile.get("full_name") or profile.get("display_name") or profile.get("name", "unknown"),
-            profile.get("auth_role", "primary owner"),
-            tone="ok",
-        )
-    with p2:
-        render_stat_card(
-            "Domain",
-            profile.get("domain", "unknown"),
-            profile.get("email", "unknown"),
-        )
-    with p3:
-        render_stat_card(
-            "Language",
-            profile.get("language", "unknown"),
-            profile.get("system_role", "operator"),
-        )
 
-    # 2. Trusted Device
-    section_label("Trusted Device")
-    dv1, dv2, dv3 = st.columns([2, 1, 1])
-    with dv1:
-        render_stat_card(
-            "Device",
-            "Trusted" if device_trusted else "Needs Registration",
-            device_state.get("label") or "primary-control-device",
-            tone="ok" if device_trusted else "warn",
-        )
-    _pending = ""
-    if dv2.button("Device Report", key="home_device_report", use_container_width=True):
-        _pending = "device report"
-    if dv3.button("Register Device", key="home_device_register", use_container_width=True):
-        _pending = "register device primary-control-device"
-
-    # 3. Health row is in the stat bar above
-
-    # 4. Command Runner
     section_label("Command Runner")
 
     if "tts_speak_full_results" not in st.session_state:
@@ -297,9 +237,6 @@ with left:
         push_history(r)
         _tts(r)
 
-    if _pending:
-        _run(_pending)
-
     if "home_cmd_input" not in st.session_state:
         st.session_state["home_cmd_input"] = st.session_state.get("home_last_cmd", "")
 
@@ -316,15 +253,12 @@ with left:
         except Exception:
             current_preview = None
 
-    run_col, report_col, refresh_col = st.columns([1, 1, 1.2])
+    run_col, dev_col, _ = st.columns([1.2, 1, 1])
     if run_col.button("Run Command", type="primary", use_container_width=True):
         _run(str(cmd_input))
         st.rerun()
-    if report_col.button("Device Report", key="home_qa_device", use_container_width=True):
+    if dev_col.button("Device Report", key="home_qa_device", use_container_width=True):
         _run("device report")
-        st.rerun()
-    if refresh_col.button("Auto Detect Device", key="home_qa_device_auto", use_container_width=True):
-        _run("auto detect device primary-control-device")
         st.rerun()
 
     # 5. Last Result
@@ -341,8 +275,6 @@ with left:
             f"Route {result.get('route', 'n/a')} · Action {result.get('parsed_action', 'n/a')}"
         )
 
-    # 5b. Streaming AI chat
-    st.divider()
     section_label("Ask AI (Streaming)")
     if "stream_ai_input" not in st.session_state:
         st.session_state["stream_ai_input"] = ""
@@ -365,47 +297,44 @@ with left:
                 st.markdown("**Jarvis:**")
                 st.write_stream(run_ai_stream(str(stream_input).strip(), context=_ai_ctx))
 
-    # 6. Primary Actions
     section_label("Quick Actions")
-    qa1, qa2, qa3 = st.columns(3)
-    if qa1.button("Status",   key="home_qa_status",   use_container_width=True): _run("status")
-    if qa2.button("Workflow", key="home_qa_workflow",  use_container_width=True): _run("workflow")
-    if qa3.button("Profile",  key="home_qa_profile",   use_container_width=True): _run("profile")
+    qa1, qa2, qa3, qa4 = st.columns(4)
+    if qa1.button("Status",    key="home_qa_status",    use_container_width=True): _run("status")
+    if qa2.button("Workflow",  key="home_qa_workflow",   use_container_width=True): _run("workflow")
+    if qa3.button("Profile",   key="home_qa_profile",    use_container_width=True): _run("profile")
+    if qa4.button("Memory",    key="home_qa_memory",    use_container_width=True): _run("memory")
 
-    qa4, qa5, qa6 = st.columns(3)
-    if qa4.button("Memory",   key="home_qa_memory",   use_container_width=True): _run("memory")
-    if qa5.button("AI Status",key="home_qa_ai_status",use_container_width=True): _run("ai status")
-    if qa6.button("Logs",     key="home_qa_logs",     use_container_width=True): _run("logs")
+    qa5, qa6, qa7, _ = st.columns(4)
+    if qa5.button("AI Status", key="home_qa_ai_status", use_container_width=True): _run("ai status")
+    if qa6.button("Logs",      key="home_qa_logs",      use_container_width=True): _run("logs")
+    if qa7.button("Doctor",    key="home_qa_doctor",    use_container_width=True): _run("doctor")
 
-    # 7. Recent Activity
-    st.divider()
     section_label("Recent Activity")
     bus_lines = read_bus_log(lines=10)
     render_log_block("\n".join(bus_lines) if bus_lines else "No bus log entries.")
 
 with right:
-    section_label("Operational Snapshot")
+    section_label("System Snapshot")
     st.markdown(
         f"HI layer: {route_badge('hi' if listener_online else 'n/a')}",
         unsafe_allow_html=True,
     )
     render_kv_grid([
+        ("Owner",        profile.get("full_name") or profile.get("name", "unknown")),
+        ("Domain",       profile.get("domain", "unknown")),
         ("Host",         state["system"].get("hostname", "unknown")),
         ("Connectivity", state["system"].get("connectivity", "unknown")),
-        ("OS",           state["system"].get("operating_system", "unknown")),
-        ("Language",     profile.get("language", "unknown")),
         ("Mode",         state["preferences"].get("response_mode", "unknown")),
-        ("Device",       "trusted" if device_trusted else "unregistered"),
         ("Focus",        state["workflow"].get("current_focus") or "none"),
+        ("Memory",       state["memory_count"]),
         ("Last Event",   state["health"].get("last_event_type", "none")),
-        ("Domain",       profile.get("domain", "unknown")),
-        ("Email",        profile.get("email", "unknown")),
     ])
 
     section_label("Users & Signups")
     _pub_signups = public_inbox_state.get("signups", [])
     _pub_enquiries = public_inbox_state.get("enquiries", [])
     _admin_users = local_admin_state.get("items", [])
+    _session_count = local_admin_state.get("count", 0)
     _u1, _u2 = st.columns(2)
     with _u1:
         render_stat_card("Signups", len(_pub_signups), "Access requests from website", tone="ok" if _pub_signups else "warn")

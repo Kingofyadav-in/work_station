@@ -42,16 +42,15 @@ device = state.get("device", {})
 device_trusted     = bool(device.get("trusted"))
 device_registered  = bool(device.get("registered"))
 
-section_label("Priority")
-p1, p2, p3 = st.columns(3)
-with p1:
+c0, c1, c2, c3 = st.columns(4)
+with c0:
     render_priority_level("low" if device_trusted else "medium", "Register or refresh trust before sensitive commands.")
-with p2:
+with c1:
     render_stat_card("Registered", "Yes" if device_registered else "No", "Device enrolled", tone="ok" if device_registered else "warn")
-with p3:
+with c2:
     render_stat_card("Trusted", "Yes" if device_trusted else "No", "Fingerprint match", tone="ok" if device_trusted else "warn")
-
-section_label("Commands")
+with c3:
+    render_stat_card("Label", device.get("label") or "none", (device.get("registered_at") or "never")[:10])
 
 def _run(cmd: str) -> None:
     if not cmd.strip():
@@ -60,15 +59,17 @@ def _run(cmd: str) -> None:
     st.session_state["device_result"] = r
     push_history(r)
 
-# Primary action buttons
-b1, b2, b3, b4, b5, b6, b7 = st.columns(7)
-if b1.button("Device Report",  key="dev_report",   use_container_width=True): _run("device report")
-if b2.button("Auto Detect",    key="dev_auto",     use_container_width=True): _run("auto detect device primary-control-device")
-if b3.button("Register Device",key="dev_register", use_container_width=True): _run("register device primary-control-device")
-if b4.button("Hardware",       key="dev_hw",       use_container_width=True): _run("hardware report")
-if b5.button("Software",       key="dev_sw",       use_container_width=True): _run("software report")
-if b6.button("Network",        key="dev_net",      use_container_width=True): _run("network report")
-if b7.button("Environment",    key="dev_env",      use_container_width=True): _run("env report")
+section_label("Commands")
+b1, b2, b3, b4 = st.columns(4)
+if b1.button("Device Report",   key="dev_report",   use_container_width=True): _run("device report")
+if b2.button("Auto Detect",     key="dev_auto",     use_container_width=True): _run("auto detect device primary-control-device")
+if b3.button("Register Device", key="dev_register", use_container_width=True): _run("register device primary-control-device")
+if b4.button("Hardware",        key="dev_hw",       use_container_width=True): _run("hardware report")
+
+b5, b6, b7, _ = st.columns(4)
+if b5.button("Software",    key="dev_sw",  use_container_width=True): _run("software report")
+if b6.button("Network",     key="dev_net", use_container_width=True): _run("network report")
+if b7.button("Environment", key="dev_env", use_container_width=True): _run("env report")
 
 # Command runner (compact)
 with st.form("device_cmd", clear_on_submit=False):
@@ -84,38 +85,6 @@ with st.form("device_cmd", clear_on_submit=False):
 result = st.session_state.get("device_result")
 if result:
     render_result_with_confirmation(result, _run, key_prefix="device")
-
-st.divider()
-
-# ── Device trust status ────────────────────────────────────────────────────────
-section_label("Trust Status")
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    render_stat_card(
-        "Registered",
-        "Yes" if device_registered else "No",
-        "Device enrolled",
-        tone="ok" if device_registered else "warn",
-    )
-with c2:
-    render_stat_card(
-        "Trusted",
-        "Yes" if device_trusted else "No",
-        "Fingerprint match",
-        tone="ok" if device_trusted else "warn",
-    )
-with c3:
-    render_stat_card(
-        "Label",
-        device.get("label") or "none",
-        "Registered name",
-    )
-with c4:
-    render_stat_card(
-        "Registered At",
-        (device.get("registered_at") or "never")[:19].replace("T", " "),
-        "Enrollment timestamp",
-    )
 
 if not device_trusted:
     if device_registered:

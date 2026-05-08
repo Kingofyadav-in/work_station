@@ -105,8 +105,7 @@ if not _voice_ok:
 voice_state = get_voice_status()
 st.caption(f"Voice status: {voice_state.get('status', 'unknown')} · {voice_state.get('message', '')}")
 
-# ── Priority + controls ────────────────────────────────────────────────────────
-section_label("Priority")
+# ── Status + controls ─────────────────────────────────────────────────────────
 conv_priority = "high" if status == "error" else ("medium" if running else "low")
 p1, p2, p3 = st.columns(3)
 with p1:
