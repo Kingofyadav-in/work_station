@@ -6,7 +6,8 @@ import urllib.request
 from typing import Any
 
 WEBSITE_URL = "https://kingofyadav.in"
-API_BASE = "http://localhost:5050"
+JARVIS_URL  = "https://jarvis.kingofyadav.in"
+API_BASE    = "http://localhost:5050"
 
 # Website pages to probe
 WEBSITE_PAGES: list[tuple[str, str]] = [
@@ -17,12 +18,21 @@ WEBSITE_PAGES: list[tuple[str, str]] = [
     ("/pages/contact.html",       "Contact"),
     ("/pages/social.html",        "Social"),
     ("/pages/collaboration.html", "Collaboration"),
-    ("/pages/blog.html",           "Blog"),
+    ("/pages/blog.html",          "Blog"),
     ("/sitemap.xml",              "Sitemap"),
     ("/manifest.json",            "Manifest"),
 ]
 
-# API endpoints to probe
+# Public Jarvis subdomain pages to probe
+JARVIS_PAGES: list[tuple[str, str]] = [
+    ("/",              "Dashboard"),
+    ("/api/health",    "API Health"),
+    ("/api/public-state", "Public State"),
+    ("/api/intake-stats", "Intake Stats"),
+    ("/api/live-class",   "Live Class"),
+]
+
+# Local API endpoints to probe
 API_ENDPOINTS: list[tuple[str, str]] = [
     ("/api/health",             "Health"),
     ("/api/status",             "Status"),
@@ -48,8 +58,8 @@ def _check_url(url: str, timeout: int = 8) -> dict[str, Any]:
             return {"ok": True, "status": resp.status, "ms": elapsed, "error": ""}
     except urllib.error.HTTPError as exc:
         elapsed = round((time.perf_counter() - start) * 1000)
-        # 401/403 = server up, requires auth — treat as healthy
-        # 404/5xx = real failure
+        # 401/403 = server up, auth-protected — healthy
+        # 3xx without Location = likely up
         ok = exc.code in (401, 403)
         note = "auth-protected" if ok else ""
         return {"ok": ok, "status": exc.code, "ms": elapsed, "error": note if ok else str(exc)[:120]}
@@ -69,6 +79,17 @@ def check_website_pages() -> list[dict[str, Any]]:
     return results
 
 
+def check_jarvis_pages() -> list[dict[str, Any]]:
+    results = []
+    for path, label in JARVIS_PAGES:
+        r = _check_url(JARVIS_URL + path)
+        r["path"] = path
+        r["label"] = label
+        r["url"] = JARVIS_URL + path
+        results.append(r)
+    return results
+
+
 def check_api_endpoints() -> list[dict[str, Any]]:
     results = []
     for path, label in API_ENDPOINTS:
@@ -82,23 +103,34 @@ def check_api_endpoints() -> list[dict[str, Any]]:
 
 def check_all() -> dict[str, Any]:
     website = check_website_pages()
-    apis = check_api_endpoints()
+    jarvis  = check_jarvis_pages()
+    apis    = check_api_endpoints()
 
-    web_ok = sum(1 for w in website if w["ok"])
-    api_ok = sum(1 for a in apis if a["ok"])
-    avg_web_ms = round(sum(w["ms"] for w in website) / len(website)) if website else 0
-    avg_api_ms = round(sum(a["ms"] for a in apis) / len(apis)) if apis else 0
+    web_ok    = sum(1 for w in website if w["ok"])
+    jarvis_ok = sum(1 for j in jarvis  if j["ok"])
+    api_ok    = sum(1 for a in apis    if a["ok"])
+
+    def _avg(items: list[dict]) -> int:
+        return round(sum(x["ms"] for x in items) / len(items)) if items else 0
 
     return {
         "website": website,
-        "apis": apis,
+        "jarvis":  jarvis,
+        "apis":    apis,
         "summary": {
-            "website_ok": web_ok,
+            "website_ok":    web_ok,
             "website_total": len(website),
-            "api_ok": api_ok,
-            "api_total": len(apis),
-            "avg_web_ms": avg_web_ms,
-            "avg_api_ms": avg_api_ms,
-            "all_ok": web_ok == len(website) and api_ok == len(apis),
+            "jarvis_ok":     jarvis_ok,
+            "jarvis_total":  len(jarvis),
+            "api_ok":        api_ok,
+            "api_total":     len(apis),
+            "avg_web_ms":    _avg(website),
+            "avg_jarvis_ms": _avg(jarvis),
+            "avg_api_ms":    _avg(apis),
+            "all_ok": (
+                web_ok == len(website)
+                and jarvis_ok == len(jarvis)
+                and api_ok == len(apis)
+            ),
         },
     }
