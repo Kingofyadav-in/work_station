@@ -538,6 +538,94 @@ def hi_identity_summary() -> str:
     )
 
 
+def get_doctor_summary() -> str:
+    doctor_path = _ROOT_DIR / "logs" / "doctor" / "latest.json"
+    try:
+        import json as _json
+        report = _json.loads(doctor_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return f"Doctor report unavailable: {exc}"
+    summary = report.get("summary", {})
+    ts = str(report.get("timestamp_utc", ""))[:19].replace("T", " ")
+    total = summary.get("pass", 0) + summary.get("warn", 0) + summary.get("fail", 0)
+    fails = [c for c in report.get("checks", []) if c.get("status") == "FAIL"]
+    warns = [c for c in report.get("checks", []) if c.get("status") == "WARN"]
+    lines = [
+        "Doctor Report",
+        "-------------",
+        f"Timestamp : {ts}",
+        f"Pass      : {summary.get('pass', 0)} / {total}",
+        f"Warn      : {summary.get('warn', 0)}",
+        f"Fail      : {summary.get('fail', 0)}",
+    ]
+    if fails:
+        lines += ["", "FAILURES:"]
+        for c in fails:
+            lines.append(f"  [{c.get('area', '')}] {c.get('name', '')}: {c.get('detail', '')}")
+    if warns:
+        lines += ["", "WARNINGS:"]
+        for c in warns[:5]:
+            lines.append(f"  [{c.get('area', '')}] {c.get('name', '')}: {c.get('detail', '')}")
+    return "\n".join(lines)
+
+
+def get_inbox_summary() -> str:
+    import sys as _sys
+    _shared = _ROOT_DIR / "shared"
+    if str(_shared) not in _sys.path:
+        _sys.path.insert(0, str(_shared))
+    try:
+        from public_intake import get_public_intake_summary  # type: ignore
+        s = get_public_intake_summary(limit=200)
+    except Exception as exc:
+        return f"Inbox summary failed: {exc}"
+    lines = [
+        "Public Inbox",
+        "------------",
+        f"Total     : {s.get('count', 0)}",
+        f"Enquiries : {s.get('enquiry_count', 0)}",
+        f"Signups   : {s.get('signup_count', 0)}",
+    ]
+    latest = s.get("latest", {})
+    if latest:
+        lines += [
+            f"Last kind : {latest.get('kind', 'none')}",
+            f"Last name : {latest.get('name', 'none')}",
+            f"Last time : {str(latest.get('ts', ''))[:16].replace('T', ' ')}",
+        ]
+    return "\n".join(lines)
+
+
+def get_chat_stats() -> str:
+    from datetime import date as _date
+    import json as _json
+    chat_log = _ROOT_DIR / "logs" / "public_chat.jsonl"
+    try:
+        raw_lines = chat_log.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return "Chat log unavailable."
+    total = len(raw_lines)
+    if total == 0:
+        return "No public chat activity yet."
+    today = str(_date.today())
+    today_count = sum(1 for line in raw_lines if today in line)
+    last: dict = {}
+    for line in reversed(raw_lines):
+        try:
+            last = _json.loads(line)
+            break
+        except Exception:
+            continue
+    return (
+        "Public Chat Stats\n"
+        "-----------------\n"
+        f"Total messages : {total}\n"
+        f"Today          : {today_count}\n"
+        f"Last message   : {str(last.get('ts', ''))[:16].replace('T', ' ')}\n"
+        f"Last question  : {str(last.get('question', ''))[:80]}"
+    )
+
+
 def search_memory_entries(query: str) -> str:
     import sys
     from pathlib import Path
@@ -724,6 +812,9 @@ def _build_action_map(payload: str = "") -> dict[str, Callable[[], str]]:
         "ai_status": lambda: json.dumps(ai_status(), indent=2),
         "ai": lambda: ask_ai(payload),
         "plan": lambda: plan_with_ai(payload),
+        "doctor": get_doctor_summary,
+        "inbox_summary": get_inbox_summary,
+        "chat_stats": get_chat_stats,
         "logs": lambda: read_recent_logs(20),
         "system_info": lambda: json.dumps(get_system_info(), indent=2),
         "shell": lambda: execute_shell_command(payload),

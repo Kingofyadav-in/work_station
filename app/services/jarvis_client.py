@@ -69,8 +69,11 @@ def run_command(command: str) -> dict[str, Any]:
     }
 
 
-def run_ai_stream(prompt: str):
-    """Generator that yields AI response chunks for streaming display."""
+def run_ai_stream(prompt: str, *, context: dict | None = None):
+    """Generator that yields AI response chunks for streaming display.
+
+    Optional context keys: workflow_focus, memory_count, domain, response_mode, last_action.
+    """
     import sys
     from pathlib import Path
     _ai_dir = Path(__file__).resolve().parents[2] / "Jarvis"
@@ -81,4 +84,19 @@ def run_ai_stream(prompt: str):
     if status.get("status") != "ready":
         yield f"[AI unavailable: {status.get('message', 'check ai status')}]"
         return
-    yield from ask_ai_stream(prompt.strip())
+    enriched = prompt.strip()
+    if context:
+        ctx_parts: list[str] = []
+        if context.get("workflow_focus"):
+            ctx_parts.append(f"Current focus: {context['workflow_focus']}")
+        if context.get("memory_count"):
+            ctx_parts.append(f"Memory entries: {context['memory_count']}")
+        if context.get("domain"):
+            ctx_parts.append(f"Domain: {context['domain']}")
+        if context.get("response_mode"):
+            ctx_parts.append(f"Response mode: {context['response_mode']}")
+        if context.get("last_action"):
+            ctx_parts.append(f"Last action: {context['last_action']}")
+        if ctx_parts:
+            enriched = "[Dashboard context — " + "; ".join(ctx_parts) + "]\n\n" + enriched
+    yield from ask_ai_stream(enriched)

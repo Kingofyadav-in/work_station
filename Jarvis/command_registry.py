@@ -54,6 +54,9 @@ REGISTRY: tuple[Command, ...] = (
     Command("ai_status",    ("ai status", "model status", "openai status"),     "info",     "low",    "Show AI provider and model status."),
     Command("time",         ("time", "what time is it", "current time", "tell me the time"), "info", "low", "Show current local time."),
     Command("commands",     ("commands", "help", "show commands", "list commands"), "info", "low",    "Show all available commands."),
+    Command("doctor",        ("doctor", "health check", "system check", "run doctor"), "info", "low", "Show system health check report."),
+    Command("inbox_summary", ("inbox", "public inbox", "inbox summary"),              "info", "low",  "Show public enquiry and signup counts."),
+    Command("chat_stats",    ("chat stats", "public chat stats", "chat activity"),    "info", "low",  "Show public Jarvis chat statistics."),
 
     # ── Identity ───────────────────────────────────────────────────────────────
     Command("identity",         ("identity", "intro", ""),                      "identity", "low",    "Describe Jarvis identity."),

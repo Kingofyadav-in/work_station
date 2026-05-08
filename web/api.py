@@ -1408,6 +1408,23 @@ async def public_signup(body: PublicSignupBody, request: Request):
     }
 
 
+@app.get("/api/intake-stats")
+async def intake_stats():
+    """Public no-PII aggregate engagement stats for website widgets."""
+    summary = get_public_intake_summary(limit=2000)
+    chat_count = 0
+    try:
+        chat_count = len(PUBLIC_CHAT_LOG.read_text(encoding="utf-8").splitlines())
+    except Exception:
+        pass
+    return {
+        "enquiry_count": summary.get("enquiry_count", 0),
+        "signup_count": summary.get("signup_count", 0),
+        "total_submissions": summary.get("count", 0),
+        "chat_messages": chat_count,
+    }
+
+
 @app.get("/api/public-intake")
 async def public_intake(ctx: dict[str, Any] = Depends(_require_read_auth), limit: int = 100):
     if limit < 1 or limit > 500:

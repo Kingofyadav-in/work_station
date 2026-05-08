@@ -354,9 +354,16 @@ with left:
     if st.button("Ask AI", key="home_stream_ai_btn", type="secondary", use_container_width=False):
         if str(stream_input or "").strip():
             from services.jarvis_client import run_ai_stream
+            _ai_ctx = {
+                "workflow_focus": state["workflow"].get("current_focus") or "",
+                "memory_count": state.get("memory_count", 0),
+                "domain": state.get("profile", {}).get("domain", ""),
+                "response_mode": state["preferences"].get("response_mode", ""),
+                "last_action": state["health"].get("last_event_type", ""),
+            }
             with st.spinner(""):
                 st.markdown("**Jarvis:**")
-                st.write_stream(run_ai_stream(str(stream_input).strip()))
+                st.write_stream(run_ai_stream(str(stream_input).strip(), context=_ai_ctx))
 
     # 6. Primary Actions
     section_label("Quick Actions")

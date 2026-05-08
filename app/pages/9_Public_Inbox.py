@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from collections import defaultdict
 from datetime import datetime
 
 import streamlit as st
@@ -30,7 +31,7 @@ render_model_selector()
 ensure_history()
 inject_theme()
 
-state = get_public_inbox_state(limit=200)
+state = get_public_inbox_state(limit=500)
 cfg = load_config()
 public_questions = read_recent_questions(limit=100)
 
@@ -59,38 +60,89 @@ with c3:
 with c4:
     render_stat_card("Chat", "On" if cfg.get("enabled") else "Off", "Public Jarvis chat")
 
+# ── Daily activity chart ───────────────────────────────────────────────────────
+if items:
+    section_label("Daily Activity")
+    daily: dict[str, dict[str, int]] = defaultdict(lambda: {"enquiry": 0, "signup": 0})
+    for item in items:
+        day = str(item.get("ts", ""))[:10]
+        if day:
+            daily[day][item.get("kind", "other")] += 1
+    sorted_days = sorted(daily.keys())[-30:]
+    chart_data = {
+        "date": sorted_days,
+        "enquiries": [daily[d]["enquiry"] for d in sorted_days],
+        "signups": [daily[d]["signup"] for d in sorted_days],
+    }
+    col_chart, col_gap = st.columns([3, 1])
+    with col_chart:
+        import pandas as pd
+        df = pd.DataFrame({"Enquiries": chart_data["enquiries"], "Signups": chart_data["signups"]}, index=chart_data["date"])
+        st.bar_chart(df, height=200)
+
 left, right = st.columns([1.15, 0.85], gap="large")
 
 with left:
     section_label("Recent Submissions")
+
+    # ── Search bar ────────────────────────────────────────────────────────────
+    search_q = st.text_input("Search enquiries / signups", placeholder="name, email, subject…", key="inbox_search")
+
+    def _matches(item: dict, q: str) -> bool:
+        if not q:
+            return True
+        q = q.lower()
+        return any(q in str(v).lower() for v in [
+            item.get("name", ""), item.get("email", ""), item.get("subject", ""),
+            item.get("message", ""), item.get("handle", ""), item.get("reason", ""),
+        ])
+
     tab1, tab2 = st.tabs(["Enquiries", "Access Requests"])
     with tab1:
-        if enquiries:
-            for item in enquiries[:50]:
-                st.markdown(
-                    f"**{html.escape(str(item.get('name') or 'Unnamed'))}** · `{html.escape(str(item.get('email') or 'no email'))}`  \n"
-                    f"{html.escape(str(item.get('subject') or 'No subject'))}  \n"
-                    f"<span style='color:var(--muted);font-size:0.78rem;'>{html.escape(str(item.get('ts', '')[:19].replace('T', ' ')))}</span>",
-                    unsafe_allow_html=True,
-                )
-                render_log_block(item.get("message", ""))
+        filtered_enq = [e for e in enquiries if _matches(e, search_q)]
+        if filtered_enq:
+            st.caption(f"{len(filtered_enq)} enquiry(s){' matching search' if search_q else ''}.")
+            for item in filtered_enq[:50]:
+                with st.container():
+                    st.markdown(
+                        f"**{html.escape(str(item.get('name') or 'Unnamed'))}** "
+                        f"· `{html.escape(str(item.get('email') or 'no email'))}`  \n"
+                        f"**{html.escape(str(item.get('subject') or 'No subject'))}**  \n"
+                        f"<span style='color:var(--muted);font-size:0.78rem;'>"
+                        f"{html.escape(str(item.get('ts', '')[:19].replace('T', ' ')))} "
+                        f"· {html.escape(str(item.get('source', '')))} "
+                        f"· page: {html.escape(str(item.get('page', '') or '—'))}"
+                        f"</span>",
+                        unsafe_allow_html=True,
+                    )
+                    if item.get("message"):
+                        with st.expander("Message", expanded=False):
+                            st.text(item["message"])
+                    st.divider()
         else:
-            st.caption("No enquiries yet.")
+            st.caption("No enquiries matching search." if search_q else "No enquiries yet.")
+
     with tab2:
-        if signups:
-            for item in signups[:50]:
+        filtered_sig = [s for s in signups if _matches(s, search_q)]
+        if filtered_sig:
+            st.caption(f"{len(filtered_sig)} access request(s){' matching search' if search_q else ''}.")
+            for item in filtered_sig[:50]:
                 rows = [
-                    ("Name", item.get("name") or "none"),
-                    ("Email", item.get("email") or "none"),
+                    ("Name",   item.get("name") or "none"),
+                    ("Email",  item.get("email") or "none"),
                     ("Handle", item.get("handle") or "none"),
                     ("Reason", item.get("reason") or "none"),
-                    ("Page", item.get("page") or "none"),
-                    ("Time", item.get("ts", "")[:19].replace("T", " ")),
+                    ("Page",   item.get("page") or "none"),
+                    ("Source", item.get("source") or "none"),
+                    ("Time",   item.get("ts", "")[:19].replace("T", " ")),
                 ]
                 render_kv_grid(rows)
-                render_log_block(item.get("message", ""))
+                if item.get("message"):
+                    with st.expander("Message", expanded=False):
+                        st.text(item["message"])
+                st.divider()
         else:
-            st.caption("No access requests yet.")
+            st.caption("No access requests matching search." if search_q else "No access requests yet.")
 
 with right:
     section_label("Public Chat")
@@ -106,10 +158,12 @@ with right:
     latest = summary.get("latest", {})
     if latest:
         render_kv_grid([
-            ("Latest Kind", latest.get("kind", "none")),
+            ("Latest Kind",   latest.get("kind", "none")),
             ("Latest Status", latest.get("status", "none")),
             ("Latest Client", latest.get("client", "none")),
-            ("Latest Time", latest.get("ts", "")[:19].replace("T", " ")),
+            ("Latest Time",   latest.get("ts", "")[:19].replace("T", " ")),
+            ("Latest Name",   latest.get("name", "none")),
+            ("Latest Page",   latest.get("page", "none") or "—"),
         ])
     else:
         st.caption("No intake records yet.")
