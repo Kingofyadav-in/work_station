@@ -6,6 +6,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AVAIL="/etc/nginx/sites-available"
 ENABLED="/etc/nginx/sites-enabled"
+LOGROTATE_CONF="/etc/logrotate.d/jarvis"
 
 if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
     echo "ERROR: run as root: sudo bash $0"
@@ -19,6 +20,16 @@ install_conf() {
     echo "  installed  ${AVAIL}/${name}"
     ln -sf "${AVAIL}/${name}" "${ENABLED}/${name}"
     echo "  enabled    ${ENABLED}/${name}"
+}
+
+install_logrotate() {
+    if command -v logrotate >/dev/null 2>&1; then
+        sed "s|/home/kingofyadav/jarvis-platform|${REPO_DIR}|g" \
+            "${REPO_DIR}/scripts/jarvis-logrotate.conf" | tee "${LOGROTATE_CONF}" > /dev/null
+        echo "  installed  ${LOGROTATE_CONF}"
+    else
+        echo "  skipped    logrotate config (logrotate not installed)"
+    fi
 }
 
 echo "── Jarvis nginx install ──────────────────────────────────────────────"
@@ -45,6 +56,10 @@ echo
 echo "── Test & reload ──"
 nginx -t
 systemctl reload nginx
+
+echo
+echo "── Logrotate ──"
+install_logrotate
 
 echo
 echo "── Active stack ─────────────────────────────────────────────────────"

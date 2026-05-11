@@ -5,6 +5,12 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 2
 
+if [ -f ".env" ]; then
+  set -a
+  . ".env"
+  set +a
+fi
+
 REPORT_DIR="$ROOT/logs/doctor"
 mkdir -p "$REPORT_DIR"
 
@@ -56,7 +62,7 @@ warn_file(){ [ -f "$1" ] && record PASS files "$1" "exists" || record WARN files
 require_dir(){ [ -d "$1" ] && record PASS dirs "$1" "exists" || record FAIL dirs "$1" "missing"; }
 
 http_code(){
-  curl -s -o /dev/null -w "%{http_code}" --max-time 4 "$1" 2>/dev/null || echo "000"
+  curl -s -o /dev/null -w "%{http_code}" --max-time 4 "$@" 2>/dev/null || echo "000"
 }
 
 log "========================================"
@@ -269,7 +275,11 @@ else
 fi
 
 for path in /api/health /api/status /api/live /api/; do
-  code="$(http_code "http://127.0.0.1:5050$path")"
+  if [[ "$path" == "/api/status" || "$path" == "/api/live" ]]; then
+    code="$(http_code -H "Authorization: Bearer ${JARVIS_API_KEY:-}" "http://127.0.0.1:5050$path")"
+  else
+    code="$(http_code "http://127.0.0.1:5050$path")"
+  fi
   case "$code" in
     200|204|301|302|307|308) record PASS endpoint "$path" "http=$code" ;;
     000) record WARN endpoint "$path" "not reachable" ;;
