@@ -6,7 +6,6 @@ runOnSave = false
 fileWatcherType = "auto"
 headless = true
 address = "127.0.0.1"
-enableCORS = false
 enableXsrfProtection = true
 
 [theme]
