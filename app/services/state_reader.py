@@ -26,6 +26,7 @@ if str(ROOT_DIR / "shared") not in sys.path:
 from services.log_reader import get_last_event, read_bus_log  # noqa: E402
 from listener_status import pid_file_is_recent, resolve_listener_pid  # noqa: E402
 from services.public_profile import enrich_dashboard_state  # noqa: E402
+from services.dashboard_db import save_dashboard_state_snapshot  # noqa: E402
 
 
 STATE_PATH = KING_DIR / "state.json"
@@ -115,6 +116,7 @@ def get_dashboard_state() -> dict[str, Any]:
         "recent_bus": bus_lines,
         "last_event": last_event or {},
     }
+    save_dashboard_state_snapshot(_result)
     _STATE_CACHE = (_time.time(), _result)
     return _result
 

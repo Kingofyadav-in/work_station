@@ -33,6 +33,7 @@ import public_chat as _public_chat
 _ORIGINAL_PUBLIC_CHAT_CONFIG = _public_chat._public_chat_config
 
 ROOT_DIR        = Path(__file__).resolve().parent.parent
+APP_DIR         = ROOT_DIR / "app"
 STATE_PATH      = ROOT_DIR / "Kingofyadav" / "state.json"
 PROFILES_PATH   = ROOT_DIR / "Jarvis" / "profiles.json"
 KING_PID        = ROOT_DIR / "logs" / "kingofyadav.pid"
@@ -98,6 +99,8 @@ _SHARED_DIR = ROOT_DIR / "shared"
 for _p in (str(_SHARED_DIR), str(_JARVIS_DIR)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
 
 from file_lock import file_lock      # noqa: E402
 from listener_status import pid_file_is_recent, resolve_listener_pid  # noqa: E402
@@ -116,6 +119,7 @@ from local_admin_registry import (   # noqa: E402
     get_local_admin_users,
     record_local_admin_user,
 )
+from services.public_profile import enrich_dashboard_state  # noqa: E402
 
 _JARVIS_OK = False
 _JARVIS_ERR = ""
@@ -397,7 +401,7 @@ def get_state() -> dict:
 
 
 def get_public_state() -> dict:
-    state = _read_json(STATE_PATH)
+    state = enrich_dashboard_state(_read_json(STATE_PATH))
     profile = state.get("profile", {})
     workflow = state.get("workflow", {})
     memory = state.get("memory", [])

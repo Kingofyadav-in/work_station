@@ -1035,6 +1035,96 @@ div[data-testid="stToast"] {
     position: relative;
 }
 
+.jarvis-site-hero {
+    border: 1px solid var(--line-strong);
+    background:
+        linear-gradient(135deg, rgba(4,106,56,0.16), rgba(255,103,31,0.10)),
+        var(--panel);
+    border-radius: 20px;
+    padding: 1.25rem 1.35rem;
+    margin: -0.55rem 0 1.35rem;
+    box-shadow: var(--card-shadow);
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+    gap: 1rem;
+    align-items: center;
+    overflow: hidden;
+}
+.jarvis-site-hero * { color: var(--text); }
+.jarvis-site-kicker {
+    color: var(--gold) !important;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+.jarvis-site-title {
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1.15;
+    margin-bottom: 0.35rem;
+}
+.jarvis-site-copy {
+    color: var(--muted) !important;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    max-width: 72ch;
+}
+.jarvis-site-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+}
+.jarvis-site-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.42rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid var(--line-strong);
+    background: var(--btn-bg);
+    color: var(--btn-text) !important;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-decoration: none !important;
+}
+.jarvis-site-action.primary {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #fff !important;
+}
+.jarvis-site-panel {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.04);
+    border-radius: 16px;
+    padding: 0.85rem;
+}
+.jarvis-site-panel-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.78rem;
+}
+.jarvis-site-panel-row:last-child { border-bottom: 0; }
+.jarvis-site-panel-row span {
+    color: var(--muted) !important;
+}
+.jarvis-site-panel-row strong {
+    text-align: right;
+    font-weight: 850;
+}
+@media (max-width: 780px) {
+    .jarvis-site-hero {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+}
+
 /* Stat cards */
 .jarvis-card {
     border: 1px solid var(--line);
@@ -1649,6 +1739,44 @@ def render_hero(title: str, subtitle: str, *, eyebrow: str = "Jarvis Console") -
             f'<div class="jarvis-title">{html.escape(title)}</div>'
             f'<div class="jarvis-subtitle">{html.escape(subtitle)}</div>'
             "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_website_jarvis_hero(profile: dict[str, Any] | None = None) -> None:
+    profile = profile or {}
+    site_url = str(profile.get("website") or "https://kingofyadav.in")
+    owner = str(profile.get("full_name") or profile.get("display_name") or "Amit Ku Yadav")
+    location = str(profile.get("location") or "Bhagalpur, Bihar, India")
+    brand = str(profile.get("brand") or "kingofyadav.in")
+    ventures = profile.get("ventures", [])
+    venture_count = len(ventures) if isinstance(ventures, list) else 0
+    st.markdown(
+        (
+            '<div class="jarvis-site-hero">'
+            '<div>'
+            '<div class="jarvis-site-kicker">Live Website AI Layer</div>'
+            f'<div class="jarvis-site-title">Jarvis AI for {html.escape(brand)}</div>'
+            '<div class="jarvis-site-copy">'
+            f'{html.escape(owner)} public website, HI Life OS identity, ventures, public questions, '
+            'and dashboard operations in one command surface. Use this panel to jump from local control '
+            'to the live website and public AI workflow.'
+            '</div>'
+            '<div class="jarvis-site-actions">'
+            f'<a class="jarvis-site-action primary" href="{html.escape(site_url)}" target="_blank" rel="noopener noreferrer">Open Live Website</a>'
+            '<a class="jarvis-site-action" href="/Public" target="_self">Public AI</a>'
+            '<a class="jarvis-site-action" href="/Identity_Device" target="_self">Identity</a>'
+            '<a class="jarvis-site-action" href="/System_Health" target="_self">System Health</a>'
+            '</div>'
+            '</div>'
+            '<div class="jarvis-site-panel">'
+            f'<div class="jarvis-site-panel-row"><span>Owner</span><strong>{html.escape(owner)}</strong></div>'
+            f'<div class="jarvis-site-panel-row"><span>Location</span><strong>{html.escape(location)}</strong></div>'
+            f'<div class="jarvis-site-panel-row"><span>Ventures</span><strong>{venture_count}</strong></div>'
+            '<div class="jarvis-site-panel-row"><span>Status</span><strong>Live dashboard linked</strong></div>'
+            '</div>'
+            '</div>'
         ),
         unsafe_allow_html=True,
     )

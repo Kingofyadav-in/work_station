@@ -87,6 +87,7 @@ _check_password()
 # ── End auth gate ─────────────────────────────────────────────────────────────
 
 from services.automation_client import get_automation_status
+from services.dashboard_db import get_latest_dashboard_state_snapshot
 from services.jarvis_client import preview_command, run_command
 from services.local_admin_registry import get_local_admin_registry_state
 from services.public_intake import get_public_inbox_state
@@ -110,6 +111,7 @@ from services.ui_helpers import (
     render_live_strip,
     render_theme_toggle,
     render_tts_toggle,
+    render_website_jarvis_hero,
     route_badge,
     section_label,
 )
@@ -180,6 +182,7 @@ render_hero(
     "Is everything ready and what can I do now? Health at a glance, last result, and quick actions — all without leaving this page.",
     eyebrow="Mission Control",
 )
+render_website_jarvis_hero(state.get("profile", {}))
 render_live_strip(state)
 
 # ── Top stat row — 4 key health indicators ────────────────────────────────────
@@ -228,6 +231,7 @@ with c4:
 profile = state.get("profile", {})
 _ventures = profile.get("ventures", [])
 _channels = profile.get("public_channels", {})
+_state_snapshot = get_latest_dashboard_state_snapshot()
 
 section_label("Public Identity Snapshot")
 id0, id1, id2, id3 = st.columns(4)
@@ -243,6 +247,20 @@ with id2:
 with id3:
     render_stat_card("Contact", profile.get("phone") or profile.get("email") or "available",
                      profile.get("email", "kingofyadav.in@gmail.com"), tone="ok")
+
+sync0, sync1, sync2, sync3 = st.columns(4)
+with sync0:
+    render_stat_card("Machine Store", "Active" if _state_snapshot else "Ready",
+                     "logs/dashboard.db", tone="ok" if _state_snapshot else "warn")
+with sync1:
+    render_stat_card("Dashboard Refresh", "Live",
+                     f"{state.get('fetched_at', '')[:19].replace('T', ' ')} UTC", tone="ok", pulse=True)
+with sync2:
+    render_stat_card("Public API", "/api/public-state",
+                     "Safe data for kingofyadav.in", tone="ok")
+with sync3:
+    render_stat_card("WebSocket", "/api/ws/public",
+                     "Live public-safe stream", tone="ok")
 
 snap_left, snap_right = st.columns([1.35, 1], gap="large")
 with snap_left:

@@ -47,6 +47,18 @@ CREATE TABLE IF NOT EXISTS automation_snapshots (
     audit_count   INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON automation_snapshots(ts DESC);
+
+CREATE TABLE IF NOT EXISTS dashboard_state_snapshots (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             TEXT    NOT NULL,
+    profile_name   TEXT    DEFAULT '',
+    website        TEXT    DEFAULT '',
+    focus          TEXT    DEFAULT '',
+    memory_count   INTEGER DEFAULT 0,
+    listener_online INTEGER DEFAULT 0,
+    public_json    TEXT    DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_state_snapshots_ts ON dashboard_state_snapshots(ts DESC);
 """
 
 
@@ -153,3 +165,70 @@ def get_recent_snapshots(limit: int = 20) -> list[dict[str, Any]]:
         return [dict(r) for r in rows]
     except Exception:
         return []
+
+
+# ── Dashboard state snapshots ─────────────────────────────────────────────────
+
+def save_dashboard_state_snapshot(state: dict[str, Any]) -> None:
+    try:
+        profile = state.get("profile", {}) if isinstance(state, dict) else {}
+        workflow = state.get("workflow", {}) if isinstance(state, dict) else {}
+        listener = state.get("listener", {}) if isinstance(state, dict) else {}
+        public_payload = {
+            "profile": {
+                "display_name": profile.get("display_name") or profile.get("full_name") or "",
+                "website": profile.get("website", ""),
+                "brand": profile.get("brand", ""),
+                "domain": profile.get("domain", ""),
+                "location": profile.get("location", ""),
+                "ventures": profile.get("ventures", []),
+            },
+            "workflow": {
+                "current_focus": workflow.get("current_focus", ""),
+                "status": workflow.get("status", ""),
+                "next_actions": workflow.get("next_actions", []),
+            },
+            "memory_count": int(state.get("memory_count", 0) or 0),
+            "fetched_at": state.get("fetched_at", ""),
+        }
+        ts = datetime.now(timezone.utc).isoformat()
+        with _conn() as con:
+            con.execute(
+                "INSERT INTO dashboard_state_snapshots "
+                "(ts, profile_name, website, focus, memory_count, listener_online, public_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    ts,
+                    public_payload["profile"]["display_name"],
+                    public_payload["profile"]["website"],
+                    public_payload["workflow"]["current_focus"],
+                    public_payload["memory_count"],
+                    int(bool(listener.get("online"))),
+                    json.dumps(public_payload, ensure_ascii=False, default=str),
+                ),
+            )
+            con.execute(
+                "DELETE FROM dashboard_state_snapshots WHERE id NOT IN "
+                "(SELECT id FROM dashboard_state_snapshots ORDER BY ts DESC LIMIT 500)"
+            )
+    except Exception:
+        pass
+
+
+def get_latest_dashboard_state_snapshot() -> dict[str, Any]:
+    try:
+        with _conn() as con:
+            row = con.execute(
+                "SELECT ts, profile_name, website, focus, memory_count, listener_online, public_json "
+                "FROM dashboard_state_snapshots ORDER BY ts DESC LIMIT 1"
+            ).fetchone()
+        if not row:
+            return {}
+        data = dict(row)
+        try:
+            data["public"] = json.loads(data.pop("public_json") or "{}")
+        except Exception:
+            data["public"] = {}
+        return data
+    except Exception:
+        return {}
