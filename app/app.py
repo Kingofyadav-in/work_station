@@ -86,6 +86,7 @@ _check_password()
 
 # ── End auth gate ─────────────────────────────────────────────────────────────
 
+from services.automation_client import get_automation_status
 from services.jarvis_client import preview_command, run_command
 from services.local_admin_registry import get_local_admin_registry_state
 from services.public_intake import get_public_inbox_state
@@ -124,6 +125,7 @@ try:
     state = get_dashboard_state()
     local_admin_state = get_local_admin_registry_state(limit=200)
     public_inbox_state = get_public_inbox_state(limit=50)
+    aut_state = get_automation_status()
 except Exception as _e:
     st.error(f"Failed to load state: {_e}")
     st.stop()
@@ -160,6 +162,13 @@ try:
 except Exception:
     pass
 
+if not aut_state.get("daemon_alive"):
+    _alerts.append(("Automation daemon is stopped. Go to Automation page to start it.", "warning"))
+elif aut_state.get("stop_active"):
+    _alerts.append(("Automation is paused (STOP file active).", "warning"))
+if aut_state.get("pending_count", 0) > 0:
+    _alerts.append((f"{aut_state['pending_count']} automation action(s) awaiting manual approval.", "warning"))
+
 for _msg, _tone in _alerts:
     if _tone == "error":
         st.error(_msg, icon="🔴")
@@ -178,7 +187,7 @@ render_live_strip(state)
 home_priority = "high" if _alerts else "low"
 home_priority_detail = "Resolve active alerts first." if _alerts else "All systems clear."
 
-c0, c1, c2, c3 = st.columns(4)
+c0, c1, c2, c3, c4 = st.columns(5)
 with c0:
     render_priority_level(home_priority, home_priority_detail)
 with c1:
@@ -203,13 +212,60 @@ with c3:
         f"Mode: {state['preferences'].get('response_mode', 'unknown')}",
         tone="warn",
     )
+with c4:
+    _aut_alive = aut_state.get("daemon_alive", False)
+    _aut_label = "Running" if _aut_alive and not aut_state.get("stop_active") else \
+                 ("Paused" if _aut_alive else "Stopped")
+    _aut_detail = f"{aut_state.get('enabled_count',0)}/{aut_state.get('rule_count',0)} rules"
+    render_stat_card(
+        "Automation",
+        _aut_label,
+        _aut_detail,
+        tone="ok" if _aut_alive and not aut_state.get("stop_active") else "warn",
+        pulse=_aut_alive and not aut_state.get("stop_active"),
+    )
+
+profile = state.get("profile", {})
+_ventures = profile.get("ventures", [])
+_channels = profile.get("public_channels", {})
+
+section_label("Public Identity Snapshot")
+id0, id1, id2, id3 = st.columns(4)
+with id0:
+    render_stat_card("Owner", profile.get("full_name") or profile.get("display_name") or "Amit Ku Yadav",
+                     profile.get("location", "Bhagalpur, Bihar, India"), tone="ok")
+with id1:
+    render_stat_card("Website", profile.get("brand") or "kingofyadav.in",
+                     profile.get("website", "https://kingofyadav.in"), tone="ok")
+with id2:
+    render_stat_card("Ventures", len(_ventures) if isinstance(_ventures, list) else 0,
+                     "Active public work streams", tone="ok")
+with id3:
+    render_stat_card("Contact", profile.get("phone") or profile.get("email") or "available",
+                     profile.get("email", "kingofyadav.in@gmail.com"), tone="ok")
+
+snap_left, snap_right = st.columns([1.35, 1], gap="large")
+with snap_left:
+    render_kv_grid([
+        ("Identity", profile.get("identity_summary", "Public identity loaded.")),
+        ("Core Work", profile.get("domain", "Digital systems and public work")),
+        ("Operating Role", profile.get("system_role", "Primary human operator")),
+        ("Jarvis Role", profile.get("relationship", {}).get("jarvis_role", "local execution")),
+    ])
+with snap_right:
+    if isinstance(_ventures, list) and _ventures:
+        st.markdown("**Active Ventures**")
+        for _venture in _ventures:
+            st.markdown(f"- {html.escape(str(_venture))}")
+    if isinstance(_channels, dict) and _channels:
+        st.markdown("**Public Channels**")
+        for _label, _url in _channels.items():
+            st.markdown(f"- {html.escape(str(_label).title())}: {html.escape(str(_url))}")
 
 # ── Main layout ────────────────────────────────────────────────────────────────
 left, right = st.columns([1.5, 1])
 
 with left:
-    profile = state.get("profile", {})
-
     section_label("Command Runner")
 
     if "tts_speak_full_results" not in st.session_state:

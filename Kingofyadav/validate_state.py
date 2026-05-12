@@ -7,20 +7,37 @@ from typing import Any
 
 DEFAULT_STATE: dict[str, Any] = {
     "profile": {
-        "display_name": "King Yadav",
-        "system_role": "primary human context",
-        "owner_role": "human owner and decision-maker behind this workspace",
+        "display_name": "Amit Ku Yadav",
+        "full_name": "Amit Ku Yadav",
+        "system_role": "Founder, digital systems builder, and primary human operator",
+        "owner_role": "human owner and decision-maker behind HI Life OS and kingofyadav.in",
         "identity_summary": (
-            "King Yadav is the primary human context for this system, "
-            "with Jarvis acting as the local execution layer."
+            "Amit Ku Yadav is a digital systems builder from Bhagalpur working across "
+            "HI Life OS, public identity, business platforms, community coordination, "
+            "and AI-assisted operations."
         ),
         "relationship": {
-            "jarvis_role": "local execution and system operations",
-            "hi_layer_role": "higher-level human interface layer",
+            "jarvis_role": "local execution, dashboard operations, automation, and private system control",
+            "hi_layer_role": "human identity layer for public profile, ventures, people, records, and decisions",
         },
-        "name": "kingofyadav",
-        "domain": "AI systems",
-        "language": "en",
+        "name": "Amit",
+        "username": "kingofyadav",
+        "domain": "Digital identity, business systems, AI workflows, and social impact",
+        "website": "https://kingofyadav.in",
+        "brand": "kingofyadav.in",
+        "company": "HI Life OS",
+        "email": "kingofyadav.in@gmail.com",
+        "phone": "+91 95235 28114",
+        "location": "Bhagalpur, Bihar, India",
+        "language": "en-IN",
+        "auth_role": "primary owner",
+        "ventures": [
+            "HI Life OS",
+            "kingofyadav.in Platform",
+            "Royal Heritage Resort",
+            "National Youth Force",
+            "Jhon Aamit LLP",
+        ],
     },
     "preferences": {
         "response_style": "structured",
@@ -37,6 +54,10 @@ DEFAULT_STATE: dict[str, Any] = {
         "tasks": [],
     },
 }
+
+
+_PROFILE_PLACEHOLDERS = {"", "?", "king yadav", "kingofyadav"}
+_DOMAIN_PLACEHOLDERS = {"", "?", "ai systems"}
 
 
 def _deepcopy_default() -> dict[str, Any]:
@@ -152,6 +173,13 @@ def normalize_state(data: dict[str, Any] | None) -> dict[str, Any]:
         relationship = profile.get("relationship", {})
         if isinstance(relationship, dict):
             state["profile"]["relationship"].update(relationship)
+    if str(state["profile"].get("display_name", "")).strip().lower() in _PROFILE_PLACEHOLDERS:
+        for _key, _value in DEFAULT_STATE["profile"].items():
+            if _key in {"relationship", "id", "created_at", "host", "fingerprint"}:
+                continue
+            state["profile"][_key] = json.loads(json.dumps(_value))
+    if str(state["profile"].get("domain", "")).strip().lower() in _DOMAIN_PLACEHOLDERS:
+        state["profile"]["domain"] = DEFAULT_STATE["profile"]["domain"]
     state["profile"]["display_name"] = str(state["profile"].get("display_name", "") or DEFAULT_STATE["profile"]["display_name"])
     state["profile"]["system_role"] = str(state["profile"].get("system_role", "") or DEFAULT_STATE["profile"]["system_role"])
     state["profile"]["owner_role"] = str(state["profile"].get("owner_role", "") or DEFAULT_STATE["profile"]["owner_role"])
@@ -161,9 +189,13 @@ def normalize_state(data: dict[str, Any] | None) -> dict[str, Any]:
     state["profile"]["name"] = str(state["profile"].get("name", "") or DEFAULT_STATE["profile"]["name"])
     state["profile"]["domain"] = str(state["profile"].get("domain", "") or DEFAULT_STATE["profile"]["domain"])
     state["profile"]["language"] = str(state["profile"].get("language", "") or DEFAULT_STATE["profile"]["language"])
-    for _opt_field in ("website", "email", "brand"):
+    for _opt_field in ("website", "email", "brand", "company", "phone", "location", "auth_role", "username"):
         if _opt_field in (data.get("profile") or {}):
             state["profile"][_opt_field] = str(data["profile"][_opt_field])
+        elif _opt_field in DEFAULT_STATE["profile"]:
+            state["profile"][_opt_field] = str(state["profile"].get(_opt_field, "") or DEFAULT_STATE["profile"][_opt_field])
+    if "ventures" not in state["profile"] or not isinstance(state["profile"].get("ventures"), list):
+        state["profile"]["ventures"] = list(DEFAULT_STATE["profile"]["ventures"])
     state["profile"]["relationship"]["jarvis_role"] = str(
         state["profile"]["relationship"].get("jarvis_role", "") or DEFAULT_STATE["profile"]["relationship"]["jarvis_role"]
     )

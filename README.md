@@ -469,22 +469,6 @@ Coverage: command routing, risk behavior, shell safety, profile/session persiste
 
 ## Operations Runbook
 
-### Pre-deploy checklist
-
-```bash
-bash scripts/doctor.sh
-python3 shared/bus_health.py
-curl -s http://127.0.0.1:5050/api/health/detail | jq '.summary'
-```
-
-Confirm before going public:
-
-- [ ] `.env` has `DASHBOARD_PASSWORD` set
-- [ ] API keys present only for providers you actually use
-- [ ] `JARVIS_API_KEY` or scoped tokens set before any non-local API exposure
-- [ ] Nginx proxying public traffic — API and dashboard never exposed directly
-- [ ] `JARVIS_PUBLIC_CHAT=1` only if you want the website widget live
-
 ### Useful ops commands
 
 | Command | Purpose |
@@ -507,6 +491,96 @@ Confirm before going public:
 | Auditable actions | Every completed action and HI mutation appends a JSONL event |
 | Safe shell execution | Shell is allowlisted and requires explicit confirmation |
 | Private / public split | Public chat never executes commands or exposes private memory |
+
+---
+
+## Roadmap
+
+Phases are sequential. Later phases depend on earlier ones being stable.
+
+| Phase | Name | Status | Summary |
+|---|---|---|---|
+| **0** | Foundation & Core Infrastructure | ✅ Complete | Bus, config, logging, state, auth, API, audit journal, scripts |
+| **1** | Jarvis Core Intelligence | ✅ Complete | Intent parser, router, skills, AI connector (Ollama/OpenAI/Anthropic), voice input |
+| **2** | Memory Engine | 🔄 Partial | SQLite semantic index, search, visibility done — long-term continuity and knowledge graph in progress |
+| **3** | Voice Intelligence | 🔄 Partial | STT (SpeechRecognition) done — wake word, real-time conversation, multilingual not yet built |
+| **4** | Autonomous Automation | ✅ Complete | Scheduler, rules engine, background monitors, self-healing watchdog, notification dispatch |
+| **4.1** | Automation Hardening | ✅ Complete | Dry-run, emergency stop, cooldown, retry+backoff, approval gate, audit log, failure history, schema validation, webhook signing |
+| **5** | Multi-Device Intelligence | 🔜 Next | Shared memory sync, cross-device session, device mesh, remote execution |
+| **6** | HI Wallet Ecosystem | 🔄 Partial | Frontend prototype live at `kingofyadav.in/wallet/` — UPI bridge and backend ledger not yet built |
+| **7** | Developer Ecosystem | ⬜ Planned | Plugin marketplace, SDK, third-party integrations |
+| **8** | Jarvis OS | ⬜ Planned | Full AI operating environment — full autonomous life layer |
+
+### Phase 4 — Autonomous Automation (current)
+
+Goal: Jarvis works without explicit commands. Background agents monitor state, fire rules-based triggers, and self-heal services.
+
+```
+Trigger (time / health / event / state change)
+        ↓
+   Rules Engine (condition match)
+        ↓
+   Task Execution (action handler)
+        ↓
+   Feedback Loop (audit + notification)
+```
+
+Components under `automation/`:
+
+| Module | Purpose |
+|---|---|
+| `scheduler.py` | Interval and cron-style job runner |
+| `rules.py` | Trigger → condition → action rules engine |
+| `monitor.py` | Health endpoint, log file, and process monitors |
+| `notifier.py` | Notification dispatch (log, webhook, bus event) |
+| `app.py` | Automation daemon entry point |
+
+---
+
+## Production Security Checklist
+
+Run before every public deployment:
+
+```bash
+bash scripts/doctor.sh
+python3 shared/bus_health.py
+curl -s http://127.0.0.1:5050/api/health/detail | jq '.summary'
+```
+
+**Secrets & credentials**
+
+- [ ] `.env` is NOT committed — check `git status` and `.gitignore`
+- [ ] `DASHBOARD_PASSWORD` is set to a strong value (not the example default)
+- [ ] `JARVIS_API_KEY` or scoped tokens set if any non-localhost client will call the API
+- [ ] API keys are only present for providers you actually use — remove unused keys
+- [ ] `LIVE_CLASS_TOKEN` rotated if it has been shared or logged
+
+**Network exposure**
+
+- [ ] API and dashboard bind to loopback (`API_HOST=127.0.0.1`) — not `0.0.0.0`
+- [ ] Nginx is the only public entry point; API and dashboard are never exposed directly
+- [ ] HTTPS is enabled on the Nginx edge — no plaintext public traffic
+- [ ] CORS `ALLOWED_ORIGIN` is set to your production domain(s) only
+- [ ] `JARVIS_TRUSTED_PROXY_ADDRS` contains only known proxy IPs
+
+**Public chat isolation**
+
+- [ ] `JARVIS_PUBLIC_CHAT=1` only if you want the website widget live
+- [ ] Public chat provider and rate limits reviewed (`JARVIS_PUBLIC_CHAT_RPM`)
+- [ ] Public knowledge root (`JARVIS_PUBLIC_SITE_ROOT`) points to the correct directory
+
+**State & persistence**
+
+- [ ] `Kingofyadav/state.json` is not world-readable (`chmod 600`)
+- [ ] `Kingofyadav/memory.db` is not world-readable
+- [ ] `logs/` directory is excluded from any public file serving
+- [ ] `shared/events/` audit journal is excluded from public access
+
+**Runtime validation**
+
+- [ ] `bash scripts/doctor.sh` shows zero critical failures
+- [ ] `curl -s http://127.0.0.1:5050/api/health/detail | jq '.summary.fail'` returns `0`
+- [ ] Automation daemon health check passes if Phase 4 is enabled
 
 ---
 

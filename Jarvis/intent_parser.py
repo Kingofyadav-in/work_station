@@ -186,6 +186,27 @@ _PREFIX_RULES: list[tuple[str, str, Any]] = [
         "shell",
         lambda v: _require(v, "shell command"),
     ),
+    # ── Automation (Phase 4) ───────────────────────────────────────────────
+    _prefix_dispatch(
+        "automation rule enable ",
+        "automation_rule_enable",
+        lambda v: _require(v, "rule id"),
+    ),
+    _prefix_dispatch(
+        "automation rule disable ",
+        "automation_rule_disable",
+        lambda v: _require(v, "rule id"),
+    ),
+    _prefix_dispatch(
+        "automation approve ",
+        "automation_approve",
+        lambda v: _require(v, "rule id"),
+    ),
+    _prefix_dispatch(
+        "automation deny ",
+        "automation_deny",
+        lambda v: _require(v, "rule id"),
+    ),
 ]
 
 

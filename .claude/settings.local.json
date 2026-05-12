@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp 4_Work.py         3_Work.py)",
+      "Bash(cp 5_Memory.py       4_Memory.py)",
+      "Bash(cp 6_Security.py     5_Security.py)",
+      "Bash(cp 7_Conversation.py 6_Conversation.py)",
+      "Bash(cp 13_Automation.py  9_Automation.py)"
+    ]
+  }
+}

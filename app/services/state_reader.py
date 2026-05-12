@@ -25,6 +25,7 @@ if str(ROOT_DIR / "shared") not in sys.path:
 
 from services.log_reader import get_last_event, read_bus_log  # noqa: E402
 from listener_status import pid_file_is_recent, resolve_listener_pid  # noqa: E402
+from services.public_profile import enrich_dashboard_state  # noqa: E402
 
 
 STATE_PATH = KING_DIR / "state.json"
@@ -67,7 +68,7 @@ def get_dashboard_state() -> dict[str, Any]:
     _now = _time.time()
     if _STATE_CACHE[1] and _now - _STATE_CACHE[0] < _STATE_TTL:
         return _STATE_CACHE[1]
-    state = get_hi_state()
+    state = enrich_dashboard_state(get_hi_state())
     profiles = get_profiles()
     system = get_system_info()
     listener = get_listener_status()
@@ -116,3 +117,14 @@ def get_dashboard_state() -> dict[str, Any]:
     }
     _STATE_CACHE = (_time.time(), _result)
     return _result
+
+
+def get_automation_snapshot() -> dict:
+    """Thin wrapper used by the main dashboard to include automation state."""
+    try:
+        sys.path.insert(0, str(ROOT_DIR / "app"))
+        from services.automation_client import get_automation_status
+        return get_automation_status()
+    except Exception:
+        return {"daemon_alive": False, "stop_active": False, "dry_run": False,
+                "rule_count": 0, "enabled_count": 0, "pending_count": 0}

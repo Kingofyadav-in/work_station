@@ -1474,6 +1474,212 @@ async def local_admin_users(ctx: dict[str, Any] = Depends(_require_read_auth), l
     return get_local_admin_users(limit=limit)
 
 
+# ── Automation API — Phase 4.2 ────────────────────────────────────────────────
+#
+# All GET routes: _require_read_auth
+# All POST action routes: _require_command_auth
+#
+# These endpoints read/write the automation module directly (same process,
+# no bus round-trip needed) so responses are fast and consistent.
+
+def _automation_status_data() -> dict[str, Any]:
+    import os as _os
+    _aut_root = _ROOT / "automation"
+    pid_file   = _ROOT / "logs" / "automation.pid"
+    stop_file  = _ROOT / "logs" / "automation.STOP"
+    rules_file = _aut_root / "rules.json"
+    pending_file = _ROOT / "logs" / "automation_pending.json"
+    audit_file = _ROOT / "logs" / "automation_audit.jsonl"
+
+    def _pid_alive(p: Path) -> int | None:
+        try:
+            pid = int(p.read_text(encoding="utf-8").strip())
+            _os.kill(pid, 0)
+            return pid
+        except PermissionError:
+            return int(p.read_text(encoding="utf-8").strip())
+        except Exception:
+            return None
+
+    pid = _pid_alive(pid_file)
+    rules: list = _read_json(rules_file) if rules_file.exists() else []
+    pending = _read_json(pending_file) if pending_file.exists() else []
+    if not isinstance(rules, list):
+        rules = []
+    if not isinstance(pending, list):
+        pending = []
+
+    last_audit_ts = ""
+    if audit_file.exists():
+        try:
+            lines = audit_file.read_text(encoding="utf-8").splitlines()
+            if lines:
+                entry = json.loads(lines[-1])
+                last_audit_ts = entry.get("ts", "")
+        except Exception:
+            pass
+
+    return {
+        "daemon_alive":  pid is not None,
+        "pid":           pid,
+        "stop_active":   stop_file.exists(),
+        "dry_run":       _os.getenv("AUTOMATION_DRY_RUN", "0") == "1",
+        "rule_count":    len(rules),
+        "enabled_count": sum(1 for r in rules if r.get("enabled", True)),
+        "pending_count": len(pending),
+        "last_audit_ts": last_audit_ts,
+        "ts":            _utc_now(),
+    }
+
+
+@app.get("/api/automation/status")
+async def automation_status(ctx: dict[str, Any] = Depends(_require_read_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_status_data)
+
+
+@app.get("/api/automation/rules")
+async def automation_rules(ctx: dict[str, Any] = Depends(_require_read_auth)):
+    rules_file = _ROOT / "automation" / "rules.json"
+    if not rules_file.exists():
+        return {"ok": True, "rules": [], "ts": _utc_now()}
+    data = _read_json(rules_file)
+    return {"ok": True, "rules": data if isinstance(data, list) else [], "ts": _utc_now()}
+
+
+@app.get("/api/automation/pending")
+async def automation_pending(ctx: dict[str, Any] = Depends(_require_read_auth)):
+    pending_file = _ROOT / "logs" / "automation_pending.json"
+    if not pending_file.exists():
+        return {"ok": True, "items": [], "ts": _utc_now()}
+    data = _read_json(pending_file)
+    return {"ok": True, "items": data if isinstance(data, list) else [], "ts": _utc_now()}
+
+
+@app.get("/api/automation/audit")
+async def automation_audit(ctx: dict[str, Any] = Depends(_require_read_auth), limit: int = 30):
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=400, detail="limit must be 1–200")
+    audit_file = _ROOT / "logs" / "automation_audit.jsonl"
+    if not audit_file.exists():
+        return {"ok": True, "items": [], "ts": _utc_now()}
+    try:
+        lines = audit_file.read_text(encoding="utf-8").splitlines()
+        items = []
+        for line in lines[-limit:]:
+            try:
+                items.append(json.loads(line))
+            except Exception:
+                pass
+        return {"ok": True, "items": list(reversed(items)), "ts": _utc_now()}
+    except Exception as exc:
+        return {"ok": False, "items": [], "error": str(exc), "ts": _utc_now()}
+
+
+@app.get("/api/automation/failures")
+async def automation_failures(ctx: dict[str, Any] = Depends(_require_read_auth), limit: int = 20):
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=400, detail="limit must be 1–200")
+    fail_file = _ROOT / "logs" / "automation_failures.jsonl"
+    if not fail_file.exists():
+        return {"ok": True, "items": [], "ts": _utc_now()}
+    try:
+        lines = fail_file.read_text(encoding="utf-8").splitlines()
+        items = []
+        for line in lines[-limit:]:
+            try:
+                items.append(json.loads(line))
+            except Exception:
+                pass
+        return {"ok": True, "items": list(reversed(items)), "ts": _utc_now()}
+    except Exception as exc:
+        return {"ok": False, "items": [], "error": str(exc), "ts": _utc_now()}
+
+
+def _automation_command(cmd: str) -> dict[str, Any]:
+    """Run an automation Jarvis command and return structured result."""
+    result = run_command(cmd)
+    return {
+        "ok":      result.get("ok", False),
+        "command": cmd,
+        "result":  result.get("formatted", ""),
+        "action":  result.get("parsed_action", ""),
+        "ts":      _utc_now(),
+    }
+
+
+@app.post("/api/automation/enable")
+async def automation_enable(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation enable")
+
+
+@app.post("/api/automation/disable")
+async def automation_disable(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation disable")
+
+
+@app.post("/api/automation/start")
+async def automation_start(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation start")
+
+
+@app.post("/api/automation/stop")
+async def automation_stop(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation stop")
+
+
+@app.post("/api/automation/emergency-stop")
+async def automation_emergency_stop(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation emergency stop")
+
+
+@app.post("/api/automation/validate")
+async def automation_validate(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, "automation validate")
+
+
+@app.post("/api/automation/rules/{rule_id}/enable")
+async def automation_rule_enable(rule_id: str, ctx: dict[str, Any] = Depends(_require_command_auth)):
+    safe_id = rule_id.strip().replace("/", "").replace("..", "")
+    if not safe_id:
+        raise HTTPException(status_code=400, detail="rule_id is required")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, f"automation rule enable {safe_id}")
+
+
+@app.post("/api/automation/rules/{rule_id}/disable")
+async def automation_rule_disable(rule_id: str, ctx: dict[str, Any] = Depends(_require_command_auth)):
+    safe_id = rule_id.strip().replace("/", "").replace("..", "")
+    if not safe_id:
+        raise HTTPException(status_code=400, detail="rule_id is required")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, f"automation rule disable {safe_id}")
+
+
+@app.post("/api/automation/approve/{rule_id}")
+async def automation_approve(rule_id: str, ctx: dict[str, Any] = Depends(_require_command_auth)):
+    safe_id = rule_id.strip().replace("/", "").replace("..", "")
+    if not safe_id:
+        raise HTTPException(status_code=400, detail="rule_id is required")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, f"automation approve {safe_id}")
+
+
+@app.post("/api/automation/deny/{rule_id}")
+async def automation_deny(rule_id: str, ctx: dict[str, Any] = Depends(_require_command_auth)):
+    safe_id = rule_id.strip().replace("/", "").replace("..", "")
+    if not safe_id:
+        raise HTTPException(status_code=400, detail="rule_id is required")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _automation_command, f"automation deny {safe_id}")
+
+
 # ── entry point ────────────────────────────────────────────────────────────────
 
 def main() -> None:

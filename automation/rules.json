@@ -1,0 +1,78 @@
+[
+  {
+    "id": "health_check_every_5m",
+    "description": "Run a health check every 5 minutes and notify on failures.",
+    "enabled": true,
+    "trigger": {
+      "type": "interval",
+      "seconds": 300
+    },
+    "conditions": [
+      {
+        "type": "health_fail_count",
+        "min": 1
+      }
+    ],
+    "action": {
+      "type": "notify",
+      "channel": "log",
+      "message": "Health check: {health_fail_count} failure(s) detected."
+    }
+  },
+  {
+    "id": "watchdog_restart_api",
+    "description": "Restart jarvis-api if its PID file is stale or process is gone.",
+    "enabled": true,
+    "trigger": {
+      "type": "interval",
+      "seconds": 60
+    },
+    "conditions": [
+      {
+        "type": "process_down",
+        "name": "jarvis-api"
+      }
+    ],
+    "action": {
+      "type": "restart_service",
+      "service": "jarvis-api",
+      "script": "scripts/start_api.sh"
+    }
+  },
+  {
+    "id": "watchdog_restart_kingofyadav",
+    "description": "Restart kingofyadav listener if it goes down.",
+    "enabled": true,
+    "trigger": {
+      "type": "interval",
+      "seconds": 60
+    },
+    "conditions": [
+      {
+        "type": "process_down",
+        "name": "jarvis-kingofyadav"
+      }
+    ],
+    "action": {
+      "type": "restart_service",
+      "service": "jarvis-kingofyadav",
+      "script": "scripts/start_all.sh"
+    }
+  },
+  {
+    "id": "daily_journal_summary",
+    "description": "Log a daily summary of automation activity at midnight.",
+    "enabled": true,
+    "trigger": {
+      "type": "cron",
+      "hour": 0,
+      "minute": 0
+    },
+    "conditions": [],
+    "action": {
+      "type": "notify",
+      "channel": "log",
+      "message": "Daily automation checkpoint: system running."
+    }
+  }
+]

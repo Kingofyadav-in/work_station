@@ -1,0 +1,17 @@
+[Unit]
+Description=Jarvis — Automation Daemon (Phase 4)
+After=network.target jarvis-api.service
+PartOf=jarvis.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kingofyadav/dev/projects/work_station
+EnvironmentFile=-/home/kingofyadav/dev/projects/work_station/.env
+ExecStart=/home/kingofyadav/dev/projects/work_station/.venv/bin/python /home/kingofyadav/dev/projects/work_station/automation/app.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/kingofyadav/dev/projects/work_station/logs/automation.log
+StandardError=append:/home/kingofyadav/dev/projects/work_station/logs/automation.log
+
+[Install]
+WantedBy=default.target

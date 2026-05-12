@@ -254,14 +254,15 @@ div[data-testid="stStatusWidget"] {
 }
 
 /* ═══════════════════════════════════════════════════
-   SIDEBAR
+   SIDEBAR — WORLD CLASS
 ═══════════════════════════════════════════════════ */
 
 section[data-testid="stSidebar"] {
     background-color: var(--sidebar-bg) !important;
     border-right: 1px solid var(--sidebar-border) !important;
-    min-width: 220px;
+    min-width: 230px !important;
     z-index: 99998 !important;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.07) !important;
 }
 div[data-testid="stSidebarContent"],
 div[data-testid="stSidebarUserContent"],
@@ -270,7 +271,26 @@ div[data-testid="stSidebarHeader"] {
     background-color: var(--sidebar-bg) !important;
 }
 
-/* Catch-all: every text node Streamlit renders inside the sidebar */
+/* ── Sidebar header → brand treatment ── */
+div[data-testid="stSidebarHeader"] {
+    padding: 0.65rem 0.9rem 0.45rem !important;
+    border-bottom: 1px solid var(--sidebar-border) !important;
+    position: relative !important;
+}
+div[data-testid="stSidebarHeader"]::after {
+    content: "JARVIS";
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 900;
+    letter-spacing: 0.32em;
+    color: var(--gold);
+    text-align: center;
+    padding-top: 0.12rem;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Catch-all text color */
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] span,
 section[data-testid="stSidebar"] div,
@@ -288,95 +308,266 @@ section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
     color: var(--text) !important;
 }
-/* Sidebar SVG icons (slider thumb, toggle track, etc.) */
-section[data-testid="stSidebar"] svg {
-    fill: var(--text) !important;
-}
-/* Sidebar input fields */
+section[data-testid="stSidebar"] svg { fill: var(--text) !important; }
 section[data-testid="stSidebar"] input {
     background-color: var(--input-bg) !important;
     color: var(--text) !important;
     border-color: var(--line-strong) !important;
 }
-/* Sidebar slider track */
 section[data-testid="stSidebar"] [data-testid="stSlider"] [data-baseweb="slider"] div {
     background: var(--gold) !important;
 }
 
-/* ── Sidebar navigation (page links) ── */
-
+/* ── Navigation container ── */
 nav[data-testid="stSidebarNav"],
 div[data-testid="stSidebarNav"] {
-    padding: 0.5rem 0 !important;
-    background-color: var(--sidebar-nav) !important;
+    padding: 0.55rem 0 0.65rem !important;
+    background-color: transparent !important;
     border-bottom: 1px solid var(--sidebar-border) !important;
 }
 
-/* Each page link item */
+/* "Pages" section label via pseudo-element */
+nav[data-testid="stSidebarNav"]::before,
+div[data-testid="stSidebarNav"]::before {
+    content: "Pages";
+    display: block;
+    font-size: 0.59rem;
+    text-transform: uppercase;
+    letter-spacing: 0.20em;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 0 1.05rem 0.4rem;
+    pointer-events: none;
+    user-select: none;
+}
+
 nav[data-testid="stSidebarNav"] ul,
 div[data-testid="stSidebarNav"] ul {
     list-style: none !important;
     margin: 0 !important;
-    padding: 0.25rem 0.5rem !important;
+    padding: 0 0.45rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.05rem !important;
 }
 
+/* ── Nav link base ── */
 nav[data-testid="stSidebarNav"] ul li a,
 div[data-testid="stSidebarNav"] ul li a,
 a[data-testid="stSidebarNavLink"] {
     display: flex !important;
     align-items: center !important;
-    padding: 0.45rem 0.8rem !important;
-    margin: 0.1rem 0 !important;
+    padding: 0.5rem 0.85rem 0.5rem 0.75rem !important;
+    margin: 0 !important;
     border-radius: 10px !important;
-    color: var(--sidebar-link) !important;
-    font-size: 0.9rem !important;
+    color: var(--muted) !important;
+    font-size: 0.875rem !important;
     font-weight: 500 !important;
     text-decoration: none !important;
-    transition: background 0.15s, color 0.15s !important;
+    transition: background 0.14s ease, color 0.14s ease,
+                border-color 0.14s ease, transform 0.14s ease !important;
     background: transparent !important;
+    border-left: 2.5px solid transparent !important;
+    letter-spacing: 0.005em !important;
+    line-height: 1.3 !important;
 }
 
+/* ── Nav link hover ── */
 nav[data-testid="stSidebarNav"] ul li a:hover,
 div[data-testid="stSidebarNav"] ul li a:hover,
 a[data-testid="stSidebarNavLink"]:hover {
-    background: var(--panel) !important;
-    color: var(--gold) !important;
+    background: var(--panel-hover) !important;
+    color: var(--text) !important;
+    border-left-color: var(--muted2) !important;
+    transform: translateX(2px) !important;
 }
 
-/* Active page link */
+/* ── Active page — the accent bar ── */
 nav[data-testid="stSidebarNav"] ul li a[aria-current="page"],
 div[data-testid="stSidebarNav"] ul li a[aria-current="page"],
 a[data-testid="stSidebarNavLink"][aria-current="page"] {
     background: var(--accent1) !important;
     color: var(--gold) !important;
     font-weight: 700 !important;
+    border-left-color: var(--gold) !important;
+    letter-spacing: 0.008em !important;
 }
 
-/* Sidebar nav link icon/span text */
+/* Active hover — keep color stable */
+nav[data-testid="stSidebarNav"] ul li a[aria-current="page"]:hover,
+div[data-testid="stSidebarNav"] ul li a[aria-current="page"]:hover,
+a[data-testid="stSidebarNavLink"][aria-current="page"]:hover {
+    background: var(--accent1) !important;
+    color: var(--gold) !important;
+    border-left-color: var(--gold) !important;
+    transform: none !important;
+}
+
+/* Nav link span text inherits color */
 nav[data-testid="stSidebarNav"] ul li a span,
 div[data-testid="stSidebarNav"] ul li a span,
 a[data-testid="stSidebarNavLink"] span {
     color: inherit !important;
 }
 
-/* Sidebar content area (below nav) */
-div[data-testid="stSidebarContent"],
+/* ── User content (controls) area ── */
+div[data-testid="stSidebarContent"] {
+    background-color: var(--sidebar-bg) !important;
+    padding: 0 !important;
+}
 div[data-testid="stSidebarUserContent"] {
-    padding: 1rem 0.75rem !important;
+    padding: 0.6rem 0.65rem 1.2rem !important;
 }
 
-/* Sidebar widgets */
+/* Widget label — clean, muted, uppercase */
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"],
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
-    color: var(--text) !important;
-    font-size: 0.87rem !important;
+    color: var(--muted) !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
 }
 section[data-testid="stSidebar"] [data-testid="stToggle"] span,
 section[data-testid="stSidebar"] [data-testid="stCheckbox"] span {
     color: var(--text) !important;
+    font-size: 0.875rem !important;
 }
 section[data-testid="stSidebar"] .stSlider [data-testid="stWidgetLabel"] {
+    color: var(--muted) !important;
+}
+
+/* Selectbox in sidebar */
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    border-radius: 10px !important;
+    font-size: 0.875rem !important;
+}
+
+/* ── Custom sidebar brand card (injected via Python) ── */
+.jarvis-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.72rem;
+    padding: 0.78rem 0.75rem;
+    margin: 0 0 0.6rem;
+    background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 100%);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+}
+.jarvis-sidebar-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--panel);
+    opacity: 0.55;
+    pointer-events: none;
+}
+.jarvis-sidebar-logo {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #046A38 0%, #FF671F 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 900;
+    color: #fff !important;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(4,106,56,0.32), 0 2px 6px rgba(255,103,31,0.20);
+    user-select: none;
+    letter-spacing: -0.03em;
+}
+.jarvis-sidebar-logo * { color: #fff !important; }
+.jarvis-sidebar-meta { position: relative; flex: 1; min-width: 0; }
+.jarvis-sidebar-wordmark {
+    font-size: 0.95rem;
+    font-weight: 800;
     color: var(--text) !important;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+}
+.jarvis-sidebar-tagline {
+    font-size: 0.60rem;
+    color: var(--muted) !important;
+    font-weight: 500;
+    margin-top: 0.22rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.jarvis-sidebar-online {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.22rem;
+    flex-shrink: 0;
+}
+.jarvis-sidebar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pulse-color);
+    animation: pulse-ring 2s ease-out infinite;
+}
+.jarvis-sidebar-online-label {
+    font-size: 0.52rem;
+    color: var(--green) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ── Sidebar section separator ── */
+.jarvis-sidebar-sep {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.05rem 0.25rem;
+    margin-top: 0.15rem;
+}
+.jarvis-sidebar-sep-label {
+    font-size: 0.59rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    font-weight: 700;
+    white-space: nowrap;
+    user-select: none;
+}
+.jarvis-sidebar-sep::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--sidebar-border);
+}
+
+/* ── Sidebar footer ── */
+.jarvis-sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.6rem 0.05rem 0;
+    margin-top: 0.6rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+.jarvis-sidebar-footer-text {
+    font-size: 0.61rem;
+    color: var(--muted) !important;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.jarvis-sidebar-footer-ts {
+    font-size: 0.59rem;
+    color: var(--muted2) !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.04em;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1329,6 +1520,19 @@ div[data-testid="stTabs"] [role="tablist"] {
     border-color: var(--divider) !important;
 }
 
+/* Sidebar brand card in dark */
+.jarvis-sidebar-brand {
+    border-color: var(--line-strong) !important;
+}
+.jarvis-sidebar-brand::before {
+    opacity: 0.30 !important;
+}
+
+/* Sidebar box-shadow softened in dark */
+section[data-testid="stSidebar"] {
+    box-shadow: 4px 0 32px rgba(0,0,0,0.28) !important;
+}
+
 /* Expander in dark */
 details[data-testid="stExpander"] summary:hover,
 div[data-testid="stExpander"] summary:hover {
@@ -1369,7 +1573,34 @@ def inject_theme() -> None:
     )
 
 
+def render_sidebar_brand() -> None:
+    from datetime import datetime as _dt
+    st.sidebar.markdown(
+        '<div class="jarvis-sidebar-brand">'
+        '<div class="jarvis-sidebar-logo">J</div>'
+        '<div class="jarvis-sidebar-meta">'
+        '<div class="jarvis-sidebar-wordmark">Jarvis</div>'
+        '<div class="jarvis-sidebar-tagline">Command Panel</div>'
+        '</div>'
+        '<div class="jarvis-sidebar-online">'
+        '<div class="jarvis-sidebar-dot"></div>'
+        '<div class="jarvis-sidebar-online-label">Live</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_theme_toggle() -> None:
+    render_sidebar_brand()
+
+    st.sidebar.markdown(
+        '<div class="jarvis-sidebar-sep">'
+        '<span class="jarvis-sidebar-sep-label">Settings</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
     mode = _theme_mode()
     if "theme_mode" not in st.session_state:
         st.session_state["theme_mode"] = mode
@@ -1387,6 +1618,15 @@ def render_theme_toggle() -> None:
         "Live updates",
         key="live_updates_enabled",
         help="Master switch for every auto-refresh timer in the dashboard.",
+    )
+
+    from datetime import datetime as _dt
+    st.sidebar.markdown(
+        '<div class="jarvis-sidebar-footer">'
+        '<span class="jarvis-sidebar-footer-text">Jarvis&nbsp;&nbsp;v4.2</span>'
+        f'<span class="jarvis-sidebar-footer-ts">{_dt.now().strftime("%H:%M")}</span>'
+        '</div>',
+        unsafe_allow_html=True,
     )
 
 
