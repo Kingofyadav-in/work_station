@@ -409,12 +409,12 @@ class LiveClassEndpointTests(unittest.TestCase):
                     req,
                 )
 
-        self.assertEqual(len(state["viewers"]), 1)
-        viewer = state["viewers"][0]
-        self.assertEqual(viewer["name"], "Test Learner")
-        self.assertEqual(viewer["device"], "Desktop Chrome")
-        self.assertTrue(viewer["ip"].startswith("198.51.100"))
-        self.assertTrue(state_path.exists())
+            self.assertEqual(len(state["viewers"]), 1)
+            viewer = state["viewers"][0]
+            self.assertEqual(viewer["name"], "Test Learner")
+            self.assertEqual(viewer["device"], "Desktop Chrome")
+            self.assertTrue(viewer["ip"].startswith("198.51.100"))
+            self.assertTrue(state_path.exists())
 
     def test_live_class_teacher_command_requires_token(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
