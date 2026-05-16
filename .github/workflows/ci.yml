@@ -29,13 +29,24 @@ jobs:
         run: pytest --tb=short --cov=. --cov-report=term-missing -q
         env:
           APP_ENV: test
+          DATABASE_URL: ""
+          DASHBOARD_PASSWORD: ci-dashboard-password
           JARVIS_API_KEY: ci-test-key-placeholder
           JARVIS_BRIDGE_SECRET: ci-bridge-secret
           JARVIS_SYNC_SECRET: ci-sync-secret
+          HI_API_KEY: ci-hi-api-key-placeholder
           ALLOWED_ORIGIN: https://kingofyadav.in
+          ALLOWED_ORIGINS: https://kingofyadav.in
           JARVIS_PUBLIC_CHAT: "0"
-          DATABASE_URL: ""
+          JARVIS_PUBLIC_CHAT_FALLBACK: "1"
+          JARVIS_BUS_BACKEND: filesystem
+          JARVIS_SYNC_SHARE_LEVEL: public
+          JARVIS_SYNC_INTERVAL: "300"
+          JARVIS_SYNC_TIMEOUT: "10"
+          JARVIS_VOICE_BACKEND: google
+          JARVIS_VOICE_LANG: en-IN
           OLLAMA_HOST: http://localhost:11434
+          AUTOMATION_DRY_RUN: "1"
 
       - name: Upload coverage
         if: always()
