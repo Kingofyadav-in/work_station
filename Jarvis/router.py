@@ -72,6 +72,12 @@ HI_INTENTS = {
     "hi_workflow_set_due",
     "hi_memory_add",
     "hi_memory_delete",
+    "hi_memory_graph",
+    "hi_memory_link",
+    "hi_memory_graph_stats",
+    "hi_memory_retention",
+    "hi_memory_export",
+    "hi_memory_import",
     "hi_set_domain",
 }
 

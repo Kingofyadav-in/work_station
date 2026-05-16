@@ -45,6 +45,7 @@ LIVE_CLASS_STATE_PATH = ROOT_DIR / "logs" / "live_class_state.json"
 PUBLIC_SITE_ROOT   = Path(os.getenv("JARVIS_PUBLIC_SITE_ROOT", str(ROOT_DIR.parent / "HI")))
 
 _API_KEY        = os.getenv("JARVIS_API_KEY", "").strip()
+_BRIDGE_SECRET  = os.getenv("JARVIS_BRIDGE_SECRET", "").strip()
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://kingofyadav.in")
 _ALLOWED_ORIGINS = [
     origin.strip()
@@ -1346,11 +1347,19 @@ async def command(body: CommandBody, ctx: dict[str, Any] = Depends(_require_comm
     return run_command(cmd)
 
 
+def _is_bridge_request(request: Request) -> bool:
+    """Return True if this request carries a valid JARVIS_BRIDGE_SECRET token."""
+    if not _BRIDGE_SECRET:
+        return False
+    auth = request.headers.get("authorization", "")
+    return auth == f"Bearer {_BRIDGE_SECRET}"
+
+
 @app.post("/api/jarvis-chat")
 async def jarvis_chat(body: ChatBody, request: Request):
     cfg = _public_chat_config()
     ip  = _client_ip(request)
-    if not cfg["enabled"]:
+    if not cfg["enabled"] and not _is_bridge_request(request):
         ip = _require_auth(request)
     if not _rate_check(ip, limit_rpm=cfg["rpm"]):
         raise HTTPException(status_code=429, detail=f"rate limit exceeded — {cfg['rpm']} rpm")
@@ -1682,6 +1691,173 @@ async def automation_deny(rule_id: str, ctx: dict[str, Any] = Depends(_require_c
         raise HTTPException(status_code=400, detail="rule_id is required")
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _automation_command, f"automation deny {safe_id}")
+
+
+# ── Phase 5: Multi-Device Sync endpoints ──────────────────────────────────────
+
+try:
+    from device_sync import (  # noqa: E402
+        _local_manifest,
+        _get_shareable_memories,
+        _get_state_summary,
+        _merge_incoming_memories,
+        add_peer,
+        check_peer_health,
+        get_sync_status,
+        list_peers,
+        remove_peer,
+        sync_all_peers,
+        sync_with_peer,
+    )
+    _SYNC_OK = True
+except Exception as _sync_err:
+    _SYNC_OK = False
+
+
+class _SyncPushBody(BaseModel):
+    memories: list[dict[str, Any]] = []
+    source_label: str = ""
+
+
+class _SyncPeerBody(BaseModel):
+    url: str
+    label: str = ""
+    trusted: bool = True
+    peer_secret: str = ""
+
+
+@app.get("/api/sync/manifest")
+async def sync_manifest(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    """Return this device's sync manifest (identity + capability handshake)."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _local_manifest)
+
+
+@app.get("/api/sync/pull-memories")
+async def sync_pull_memories(
+    since: str | None = None,
+    ctx: dict[str, Any] = Depends(_require_command_auth),
+):
+    """Serve shareable memories for a peer to pull."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    memories = await loop.run_in_executor(None, _get_shareable_memories, since)
+    return {"memories": memories, "count": len(memories)}
+
+
+def _validate_peer_secret(request: Request) -> None:
+    """If JARVIS_SYNC_SECRET is set, require X-Jarvis-Peer-Secret to match."""
+    if not _BRIDGE_SECRET:  # reuse _BRIDGE_SECRET slot for sync if dedicated key not set
+        sync_secret = os.getenv("JARVIS_SYNC_SECRET", "").strip()
+    else:
+        sync_secret = os.getenv("JARVIS_SYNC_SECRET", "").strip()
+    if not sync_secret:
+        return  # no peer secret configured — accept authenticated pushes
+    incoming = request.headers.get("x-jarvis-peer-secret", "")
+    if incoming != sync_secret:
+        raise HTTPException(status_code=403, detail="invalid peer secret")
+
+
+@app.post("/api/sync/push-memories")
+async def sync_push_memories(
+    body: _SyncPushBody,
+    request: Request,
+    ctx: dict[str, Any] = Depends(_require_command_auth),
+):
+    """Accept incoming memories from a peer device."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    _validate_peer_secret(request)
+    memories = body.memories[:500]  # cap at 500 per push
+    label = body.source_label.strip() or "unknown"
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, _merge_incoming_memories, memories, label)
+    return {"ok": True, **result}
+
+
+@app.get("/api/sync/state-summary")
+async def sync_state_summary(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    """Return a public-safe state summary for cross-device awareness."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _get_state_summary)
+
+
+@app.get("/api/sync/status")
+async def sync_status(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    """Return sync status: peers, last sync time, share level."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_sync_status)
+
+
+@app.get("/api/sync/peers")
+async def sync_peers(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    """List all registered sync peers."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    return {"peers": await loop.run_in_executor(None, list_peers)}
+
+
+@app.post("/api/sync/peers")
+async def sync_add_peer(
+    body: _SyncPeerBody,
+    ctx: dict[str, Any] = Depends(_require_command_auth),
+):
+    """Register a new sync peer by URL."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    if not body.url.strip():
+        raise HTTPException(status_code=400, detail="url is required")
+    loop = asyncio.get_running_loop()
+    peer = await loop.run_in_executor(None, add_peer, body.url, body.label, body.trusted, body.peer_secret)
+    return {"ok": True, "peer": peer}
+
+
+@app.delete("/api/sync/peers/{peer_id}")
+async def sync_remove_peer(
+    peer_id: str,
+    ctx: dict[str, Any] = Depends(_require_command_auth),
+):
+    """Remove a registered sync peer."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    removed = await loop.run_in_executor(None, remove_peer, peer_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Peer not found")
+    return {"ok": True, "removed": peer_id}
+
+
+@app.post("/api/sync/run")
+async def sync_run(ctx: dict[str, Any] = Depends(_require_command_auth)):
+    """Trigger an immediate sync with all trusted peers."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, sync_all_peers)
+
+
+@app.get("/api/sync/peers/{peer_id}/health")
+async def sync_peer_health(
+    peer_id: str,
+    ctx: dict[str, Any] = Depends(_require_command_auth),
+):
+    """Check reachability of a specific peer."""
+    if not _SYNC_OK:
+        raise HTTPException(status_code=503, detail="Sync module not available")
+    peers = list_peers()
+    peer = next((p for p in peers if p.get("id") == peer_id or p.get("url") == peer_id), None)
+    if not peer:
+        raise HTTPException(status_code=404, detail="Peer not found")
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, check_peer_health, peer["url"])
 
 
 # ── entry point ────────────────────────────────────────────────────────────────

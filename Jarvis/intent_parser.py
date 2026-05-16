@@ -104,6 +104,16 @@ _PREFIX_RULES: list[tuple[str, str, Any]] = [
         lambda v: {"memory_id": _require(v, "memory id")},
     ),
     _prefix_dispatch(
+        "memory graph ",
+        "hi_memory_graph",
+        lambda v: {"memory_id": _require(v, "memory id")},
+    ),
+    _prefix_dispatch(
+        "link memory ",
+        "hi_memory_link",
+        lambda v: _parse_memory_link(v),
+    ),
+    _prefix_dispatch(
         "set my name ",
         "hi_set_profile_field",
         lambda v: {"field": "name", "value": _require(v, "human name")},
@@ -186,6 +196,17 @@ _PREFIX_RULES: list[tuple[str, str, Any]] = [
         "shell",
         lambda v: _require(v, "shell command"),
     ),
+    # ── Multi-Device Sync (Phase 5) ───────────────────────────────────────────
+    _prefix_dispatch(
+        "add sync peer ",
+        "sync_add_peer",
+        lambda v: _require(v, "peer URL"),
+    ),
+    _prefix_dispatch(
+        "remove sync peer ",
+        "sync_remove_peer",
+        lambda v: _require(v, "peer URL or ID"),
+    ),
     # ── Automation (Phase 4) ───────────────────────────────────────────────
     _prefix_dispatch(
         "automation rule enable ",
@@ -208,6 +229,22 @@ _PREFIX_RULES: list[tuple[str, str, Any]] = [
         lambda v: _require(v, "rule id"),
     ),
 ]
+
+
+def _parse_memory_link(value: str) -> dict[str, str]:
+    """Parse 'link memory <source_id> to <target_id> [as <relation>]'."""
+    value = value.strip()
+    relation = "related"
+    if " as " in value:
+        value, _, relation = value.rpartition(" as ")
+        relation = relation.strip() or "related"
+    if " to " in value:
+        source_id, _, target_id = value.partition(" to ")
+        return {"source_id": source_id.strip(), "target_id": target_id.strip(), "relation": relation}
+    parts = value.split()
+    if len(parts) < 2:
+        raise ValueError("link memory needs: <source_id> to <target_id> [as <relation>]")
+    return {"source_id": parts[0], "target_id": parts[1], "relation": relation}
 
 
 def _parse_task_status(value: str) -> dict[str, str]:

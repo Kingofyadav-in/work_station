@@ -1,0 +1,18 @@
+[Unit]
+Description=Jarvis Phase 5 Multi-Device Sync Agent
+After=network-online.target jarvis-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/dev/projects/work_station
+EnvironmentFile=%h/dev/projects/work_station/.env
+ExecStart=/usr/bin/env python3 %h/dev/projects/work_station/scripts/sync_agent.py --loop
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:%h/dev/projects/work_station/logs/sync_agent.log
+StandardError=append:%h/dev/projects/work_station/logs/sync_agent.log
+PIDFile=%h/dev/projects/work_station/logs/sync_agent.pid
+
+[Install]
+WantedBy=default.target

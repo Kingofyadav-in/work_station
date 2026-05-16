@@ -764,6 +764,97 @@ def show_commands() -> str:
     return format_help_text()
 
 
+# ── Phase 5: Multi-Device Sync ────────────────────────────────────────────────
+
+def _load_sync_module() -> object | None:
+    import sys
+    shared_dir = str(_ROOT_DIR / "shared")
+    if shared_dir not in sys.path:
+        sys.path.insert(0, shared_dir)
+    try:
+        import device_sync
+        return device_sync
+    except Exception as exc:
+        return None
+
+
+def get_sync_status() -> str:
+    mod = _load_sync_module()
+    if mod is None:
+        return "Sync module not available."
+    status = mod.get_sync_status()  # type: ignore
+    peers = status.get("trusted_peers", [])
+    peer_lines = "\n".join(
+        f"  {p.get('label', p.get('url'))} — {p.get('url')} (last: {p.get('last_sync') or 'never'})"
+        for p in peers
+    )
+    return (
+        f"Multi-Device Sync Status\n"
+        f"------------------------\n"
+        f"Share level: {status.get('share_level')}\n"
+        f"Peers: {status.get('peer_count')}\n"
+        f"Last sync: {status.get('last_sync') or 'never'}\n"
+        f"Memory count: {status.get('memory_count')}\n"
+        f"Peers:\n{peer_lines or '  (none registered)'}"
+    )
+
+
+def run_sync_now() -> str:
+    mod = _load_sync_module()
+    if mod is None:
+        return "Sync module not available."
+    result = mod.sync_all_peers()  # type: ignore
+    if result.get("message") == "no peers":
+        return "No sync peers registered. Add peers with: add sync peer <url>"
+    return (
+        f"Sync complete: {result['peers_synced']} peer(s) ok, "
+        f"{result.get('peers_failed', 0)} failed. "
+        f"Pulled {result['total_pulled']}, pushed {result['total_pushed']}."
+    )
+
+
+def list_sync_peers() -> str:
+    mod = _load_sync_module()
+    if mod is None:
+        return "Sync module not available."
+    peers = mod.list_peers()  # type: ignore
+    if not peers:
+        return "No sync peers registered. Use: add sync peer <url> [label]"
+    lines = ["Registered Sync Peers", "---------------------"]
+    for p in peers:
+        trust = "trusted" if p.get("trusted") else "untrusted"
+        last = p.get("last_sync") or "never"
+        lines.append(f"  [{trust}] {p.get('label', '?')} — {p.get('url')} (last sync: {last})")
+    return "\n".join(lines)
+
+
+def add_sync_peer(payload: str) -> str:
+    mod = _load_sync_module()
+    if mod is None:
+        return "Sync module not available."
+    parts = payload.strip().split(None, 1)
+    if not parts:
+        return "Usage: add sync peer <url> [label]"
+    url = parts[0]
+    label = parts[1] if len(parts) > 1 else ""
+    try:
+        peer = mod.add_peer(url, label)  # type: ignore
+        return f"Peer registered: {peer.get('label', url)} → {url}"
+    except Exception as exc:
+        return f"Failed to add peer: {exc}"
+
+
+def remove_sync_peer(payload: str) -> str:
+    mod = _load_sync_module()
+    if mod is None:
+        return "Sync module not available."
+    url_or_id = payload.strip()
+    if not url_or_id:
+        return "Usage: remove sync peer <url_or_id>"
+    removed = mod.remove_peer(url_or_id)  # type: ignore
+    return f"Peer removed: {url_or_id}" if removed else f"Peer not found: {url_or_id}"
+
+
 def _build_action_map(payload: str = "") -> dict[str, Callable[[], str]]:
     action_map: dict[str, Callable[[], str]] = {
         "time": get_time,
@@ -819,6 +910,11 @@ def _build_action_map(payload: str = "") -> dict[str, Callable[[], str]]:
         "system_info": lambda: json.dumps(get_system_info(), indent=2),
         "shell": lambda: execute_shell_command(payload),
         "search_memory": lambda: search_memory_entries(payload),
+        "sync_status": get_sync_status,
+        "sync_run": run_sync_now,
+        "sync_peers": list_sync_peers,
+        "sync_add_peer": lambda: add_sync_peer(payload),
+        "sync_remove_peer": lambda: remove_sync_peer(payload),
         "commands": show_commands,
         "open_terminal": open_terminal,
         "open_chrome": open_chrome,

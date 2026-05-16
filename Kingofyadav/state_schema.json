@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kingofyadav.in/schemas/jarvis-state/v1",
+  "title": "Jarvis HI State",
+  "description": "Schema for Kingofyadav/state.json — the authoritative local state managed by state_manager.py. Never edit this file directly; mutate it only via named intents through the message bus.",
+  "type": "object",
+  "required": ["profile", "preferences", "memory", "workflow"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "profile": {
+      "type": "object",
+      "description": "The human identity (HI) profile for the primary owner — Amit Ku Yadav.",
+      "required": ["display_name", "name", "language"],
+      "additionalProperties": true,
+      "properties": {
+        "id":               { "type": "string", "description": "Stable HI identity ID — generated once (hi_<uuid>), never regenerated." },
+        "display_name":     { "type": "string", "minLength": 1 },
+        "full_name":        { "type": "string" },
+        "name":             { "type": "string", "description": "Short first name used in assistant greetings." },
+        "username":         { "type": "string" },
+        "system_role":      { "type": "string" },
+        "owner_role":       { "type": "string" },
+        "identity_summary": { "type": "string" },
+        "domain":           { "type": "string" },
+        "website":          { "type": "string", "format": "uri" },
+        "brand":            { "type": "string" },
+        "company":          { "type": "string" },
+        "email":            { "type": "string", "format": "email" },
+        "phone":            { "type": "string" },
+        "location":         { "type": "string" },
+        "language":         { "type": "string", "description": "BCP-47 language tag, e.g. en-IN." },
+        "auth_role":        { "type": "string", "enum": ["primary owner", "admin", "viewer"] },
+        "host":             { "type": "string", "description": "Hostname where the identity was first created — never updated." },
+        "username_system":  { "type": "string" },
+        "fingerprint":      { "type": "string", "description": "SHA-256 fingerprint of id+username+host — recomputed on every load." },
+        "created_at":       { "type": "string", "format": "date-time" },
+        "ventures": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Named ventures / brands associated with this identity."
+        },
+        "relationship": {
+          "type": "object",
+          "properties": {
+            "jarvis_role":   { "type": "string" },
+            "hi_layer_role": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+
+    "preferences": {
+      "type": "object",
+      "description": "Operator-level preferences for how Jarvis should behave.",
+      "properties": {
+        "response_style":  { "type": "string", "enum": ["structured", "casual", "minimal"] },
+        "response_mode":   { "type": "string", "enum": ["adaptive", "verbose", "concise"] },
+        "verbosity":       { "type": "string", "enum": ["low", "medium", "high"] },
+        "local_execution": { "type": "string" },
+        "hi_routing":      { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "memory": {
+      "type": "array",
+      "description": "Short-term memory entries stored in state. Long-term memory lives in memory.db via memory_store.py.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["note", "event", "decision", "reminder", "insight"]
+          },
+          "text":       { "type": "string" },
+          "event":      { "type": "string" },
+          "command":    { "type": "string" },
+          "tag":        { "type": "string" },
+          "source":     { "type": "string" },
+          "visibility": { "type": "string", "enum": ["private", "public"] },
+          "importance": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "created_at": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "workflow": {
+      "type": "object",
+      "description": "Current work context — active focus, status, task queue, next actions.",
+      "required": ["current_focus", "status", "tasks", "next_actions"],
+      "properties": {
+        "current_focus": { "type": "string", "description": "What Amit is currently working on." },
+        "status": {
+          "type": "string",
+          "enum": ["ready", "busy", "focused", "paused", "offline"],
+          "default": "ready"
+        },
+        "next_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status"],
+            "properties": {
+              "id":               { "type": "string" },
+              "title":            { "type": "string" },
+              "status":           { "type": "string", "enum": ["todo", "doing", "blocked", "done", "cancelled"] },
+              "due":              { "type": "string" },
+              "estimate_minutes": { "type": "integer", "minimum": 0 },
+              "blockers":         { "type": "array", "items": { "type": "string" } },
+              "created_at":       { "type": "string", "format": "date-time" },
+              "updated_at":       { "type": "string", "format": "date-time" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

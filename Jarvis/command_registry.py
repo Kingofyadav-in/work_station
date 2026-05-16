@@ -119,12 +119,25 @@ REGISTRY: tuple[Command, ...] = (
     Command("hi_memory_related",    (), "hi_state", "low",    "Show memories related to a memory id.", takes_payload=True, payload_hint="related memory <id>"),
     Command("hi_memory_visibility", (), "settings", "medium", "Set memory public/private visibility.", takes_payload=True, payload_hint="make memory public <id>"),
     Command("hi_memory_delete",     (), "settings", "medium", "Delete a memory entry by id.", takes_payload=True, payload_hint="delete memory <id>"),
+    Command("hi_memory_graph",      (), "hi_state", "low",    "Show knowledge graph neighbourhood for a memory.", takes_payload=True, payload_hint="memory graph <id>"),
+    Command("hi_memory_link",       (), "settings", "medium", "Create a typed link between two memories.", takes_payload=True, payload_hint="link memory <source_id> to <target_id> [as <relation>]"),
+    Command("hi_memory_graph_stats", ("knowledge graph", "memory graph stats", "graph stats", "memory graph summary"), "hi_state", "low", "Show knowledge graph statistics."),
+    Command("hi_memory_retention",  ("memory retention", "apply retention policy", "run retention"), "settings", "medium", "Apply importance-based memory retention policy."),
+    Command("hi_memory_export",     ("export memory", "memory export", "backup memory"), "hi_state", "low", "Export all memories for backup."),
+    Command("hi_memory_import",     (), "settings", "medium", "Bulk-import memories with duplicate detection.", takes_payload=True, payload_hint="import memories <json list>"),
     Command("set_ai_name",          (), "settings", "medium", "Set the AI assistant name.",  takes_payload=True, payload_hint="set ai name <name>"),
     Command("set_intro_mode",       (), "settings", "medium", "Set intro verbosity mode.",   takes_payload=True, payload_hint="set intro mode <short|normal|formal>"),
     Command("set_command_style",    (), "settings", "medium", "Set preferred command style.", takes_payload=True, payload_hint="set command style <natural|structured>"),
     Command("set_mic_device",       (), "settings", "medium", "Set microphone device index.", takes_payload=True, payload_hint="set mic device <index>"),
     Command("set_wake_phrase",      (), "settings", "medium", "Set the voice wake phrase.",  takes_payload=True, payload_hint="set wake phrase <phrase>"),
     Command("register_device",      ("register device",), "settings", "medium", "Register this machine as a trusted Jarvis control device.", takes_payload=True, payload_hint="register device [label]"),
+
+    # ── Phase 5: Multi-Device Sync ────────────────────────────────────────────
+    Command("sync_status",  ("sync status", "device sync status", "sync peers"),      "sync", "low",    "Show multi-device sync status and registered peers."),
+    Command("sync_run",     ("sync now", "run sync", "sync all peers"),                "sync", "medium", "Trigger immediate sync with all registered peers."),
+    Command("sync_peers",   ("list sync peers", "show peers"),                         "sync", "low",    "List all registered sync peer devices."),
+    Command("sync_add_peer", (), "sync", "medium", "Register a new sync peer by URL.", takes_payload=True, payload_hint="add sync peer <url> [label]"),
+    Command("sync_remove_peer", (), "sync", "medium", "Remove a sync peer.", takes_payload=True, payload_hint="remove sync peer <url_or_id>"),
 
     # ── Shell ─────────────────────────────────────────────────────────────────
     Command("shell", (), "shell", "high", "Execute an allowlisted shell command (requires confirmation).", takes_payload=True, payload_hint="run <command>"),

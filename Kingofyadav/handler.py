@@ -8,9 +8,15 @@ from typing import Any
 from memory import (
     add_memory,
     delete_memory_entry,
+    export_memory_backup,
+    get_graph_summary,
+    get_knowledge_graph,
     get_memory_search_summary,
     get_memory_summary,
     get_related_memory_summary,
+    import_memory_batch,
+    link_memories,
+    run_retention_policy,
     set_memory_visibility,
 )
 from preferences import get_preferences_summary, set_preference
@@ -85,6 +91,35 @@ def handle_request(message: dict) -> dict:
         result = delete_memory_entry(str(memory_id).strip())
         if not result.get("_error"):
             append_event("Kingofyadav", "memory_deleted", {"memory_id": memory_id})
+        return result
+    if intent == "hi_memory_graph":
+        memory_id = raw_payload.get("memory_id", raw_payload) if isinstance(raw_payload, dict) else str(raw_payload)
+        depth = int(raw_payload.get("depth", 2)) if isinstance(raw_payload, dict) else 2
+        return get_knowledge_graph(str(memory_id).strip(), depth=depth)
+    if intent == "hi_memory_link" and isinstance(raw_payload, dict):
+        source_id = str(raw_payload.get("source_id", "")).strip()
+        target_id = str(raw_payload.get("target_id", "")).strip()
+        relation = str(raw_payload.get("relation", "related")).strip()
+        result = link_memories(source_id, target_id, relation)
+        if not result.get("_error"):
+            append_event("Kingofyadav", "memory_linked", {"source_id": source_id, "target_id": target_id, "relation": relation})
+        return result
+    if intent == "hi_memory_graph_stats":
+        return get_graph_summary()
+    if intent == "hi_memory_retention":
+        dry_run = bool(raw_payload.get("dry_run", False)) if isinstance(raw_payload, dict) else False
+        result = run_retention_policy(dry_run=dry_run)
+        if not dry_run:
+            append_event("Kingofyadav", "memory_retention_applied", result.get("args", {}))
+        return result
+    if intent == "hi_memory_export":
+        return export_memory_backup()
+    if intent == "hi_memory_import" and isinstance(raw_payload, dict):
+        entries = raw_payload.get("entries", [])
+        if not isinstance(entries, list):
+            return {"text": "Memory import failed: entries must be a list.", "_error": True}
+        result = import_memory_batch(entries)
+        append_event("Kingofyadav", "memory_imported", result.get("args", {}))
         return result
     if intent == "hi_get_workflow":
         return get_workflow_summary(raw_payload)

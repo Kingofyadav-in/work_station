@@ -6,7 +6,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from memory_store import delete_memory, related_memories, search_memories, set_visibility, sync_from_state, upsert_memory
+from memory_store import (
+    add_typed_connection,
+    apply_retention_policy,
+    delete_memory,
+    export_memories,
+    get_graph_stats,
+    import_memories,
+    knowledge_graph_query,
+    related_memories,
+    search_memories,
+    set_visibility,
+    sync_from_state,
+    upsert_memory,
+)
 from state_manager import load_state, update_state
 from validate_state import normalize_memory_entry
 
@@ -129,6 +142,87 @@ def delete_memory_entry(memory_id: str) -> dict:
     if db_ok:
         return {"text": f"Memory {mid} deleted.", "args": {"module": "memory", "view": "delete", "id": mid}}
     return {"text": f"Memory {mid} not found.", "_error": True, "args": {"module": "memory", "view": "delete", "id": mid}}
+
+
+def get_knowledge_graph(memory_id: str, depth: int = 2, limit: int = 20) -> dict:
+    """Return the knowledge graph neighbourhood for a memory node."""
+    sync_from_state(load_state()["memory"])
+    graph = knowledge_graph_query(memory_id, depth=depth, limit=limit)
+    if not graph["nodes"]:
+        return {
+            "text": f"Knowledge graph for {memory_id}: no nodes found.",
+            "_error": True,
+            "args": {"module": "memory", "view": "graph"},
+        }
+    return {
+        "text": (
+            f"Knowledge graph for {memory_id}: "
+            f"{graph['node_count']} node(s), {graph['edge_count']} edge(s), depth={depth}."
+        ),
+        "args": {"module": "memory", "view": "graph", "graph": graph},
+    }
+
+
+def link_memories(source_id: str, target_id: str, relation: str = "related") -> dict:
+    """Create a typed relationship between two memories."""
+    sync_from_state(load_state()["memory"])
+    ok = add_typed_connection(source_id, target_id, relation)
+    if ok:
+        return {
+            "text": f"Memory link created: {source_id} --[{relation}]--> {target_id}",
+            "args": {"module": "memory", "view": "link"},
+        }
+    return {
+        "text": f"Memory link failed: one or both IDs not found.",
+        "_error": True,
+        "args": {"module": "memory", "view": "link"},
+    }
+
+
+def run_retention_policy(dry_run: bool = False) -> dict:
+    """Apply the importance-based TTL retention policy to memories."""
+    stats = apply_retention_policy(dry_run=dry_run)
+    mode = "Dry-run" if dry_run else "Applied"
+    return {
+        "text": (
+            f"{mode} retention policy: "
+            f"{stats['expired']} expired, {stats['archived']} archived "
+            f"(from {stats.get('total_checked', '?')} total)."
+        ),
+        "args": {"module": "memory", "view": "retention", **stats},
+    }
+
+
+def export_memory_backup(limit: int = 1000) -> dict:
+    """Export all memories for backup."""
+    entries = export_memories(limit=limit)
+    return {
+        "text": f"Memory export: {len(entries)} entries.",
+        "args": {"module": "memory", "view": "export", "entries": entries},
+    }
+
+
+def import_memory_batch(entries: list[dict]) -> dict:
+    """Bulk-import memories with duplicate detection."""
+    result = import_memories(entries, check_duplicate=True)
+    return {
+        "text": f"Memory import: {result['imported']} imported, {result['skipped']} skipped (duplicates).",
+        "args": {"module": "memory", "view": "import", **result},
+    }
+
+
+def get_graph_summary() -> dict:
+    """Return knowledge graph statistics."""
+    sync_from_state(load_state()["memory"])
+    stats = get_graph_stats()
+    rel_str = ", ".join(f"{k}={v}" for k, v in stats["relation_types"].items())
+    return {
+        "text": (
+            f"Knowledge graph: {stats['total_memories']} memories, "
+            f"{stats['total_connections']} connections. Relations: {rel_str or 'none'}."
+        ),
+        "args": {"module": "memory", "view": "graph_stats", **stats},
+    }
 
 
 def get_memory_summary(raw_payload: object = "") -> dict:
