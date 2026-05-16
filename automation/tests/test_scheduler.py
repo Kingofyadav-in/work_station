@@ -66,7 +66,7 @@ class TestSchedulerStartStop(unittest.TestCase):
         s = Scheduler(tick=0.1)
         s.add_job(Job(rule, noop_handler, noop_context))
         s.start()
-        time.sleep(1.5)
+        time.sleep(0.5)
         s.stop(timeout=2.0)
         self.assertGreaterEqual(len(fired), 1)
 

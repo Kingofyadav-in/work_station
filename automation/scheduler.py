@@ -185,7 +185,7 @@ class Job:
         self._max_retries     = int(rule.get("max_retries", 0))
         self._cooldown        = int(rule.get("cooldown_seconds", 0))
 
-        self._last_run:           float = 0.0
+        self._last_run:           float = time.monotonic() - self._interval  # due immediately
         self._last_success_time:  float = 0.0
         self._last_cron_day:      int   = -1
         self._retry_count:        int   = 0
