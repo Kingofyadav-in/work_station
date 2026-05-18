@@ -83,13 +83,15 @@ static void daemon_loop(void) {
 
     char last_focus[256] = {0};
     int  last_done       = -1;
+    int  poll_n          = 0;
 
     while (1) {
         sleep(POLL_SECS);
+        poll_n++;
 
         char *raw = api_get_json("/api/live", 5000L);
         if (!raw) {
-            dlog("API unreachable\n");
+            dlog("poll #%d  API unreachable\n", poll_n);
             continue;
         }
 
@@ -127,6 +129,11 @@ static void daemon_loop(void) {
             api_notify_send(msg);
         }
         last_done = n_done;
+
+        /* Heartbeat every 10 polls (~5 min) */
+        if (poll_n % 10 == 0)
+            dlog("heartbeat  poll=%d  focus='%.60s'  done=%d\n",
+                 poll_n, last_focus[0] ? last_focus : "?", last_done);
 
         json_free(root);
     }
