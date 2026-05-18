@@ -1,0 +1,164 @@
+.TH JARVIS 1 "May 2026" "Jarvis CLI 0.7.0" "User Commands"
+.SH NAME
+jarvis \- personal AI assistant CLI
+.SH SYNOPSIS
+.B jarvis
+[\fIcommand\fR] [\fIargs\fR] [\fI\-\-flags\fR]
+.SH DESCRIPTION
+.B jarvis
+is a native C binary that controls the Jarvis AI platform.
+It reads
+.I state.json
+offline and communicates with a FastAPI server (default
+.IR http://127.0.0.1:5050 )
+online.
+Online commands fall back gracefully when the API is unreachable.
+.SH CORE COMMANDS
+.TP
+.B jarvis
+Show the default landing screen (date, system, tip).
+.TP
+.B jarvis help
+Print the full command reference.
+.TP
+.B jarvis version
+Show version, compiler, OS, and build date.
+.TP
+.B jarvis time
+Show current date, clock, and timezone.
+.TP
+.B jarvis hello
+Greeting with version and timestamp.
+.SH OFFLINE COMMANDS
+Read
+.I state.json
+directly \[em] no API required.
+.TP
+.B jarvis who
+Identity profile: name, role, domain, host, ID.
+.TP
+.B jarvis focus
+Current focus and next actions from the workflow.
+.TP
+.B jarvis tasks [\fI\-\-blocked\fR]
+Task list with status icons.
+.B \-\-blocked
+shows only blocked tasks and expands each task's blockers array.
+.TP
+.B jarvis memory [\fIsearch\fR \fIquery\fR]
+Recent memory entries (last 10).
+.B search
+\fIquery\fR performs a case-insensitive substring search across all entries.
+.TP
+.B jarvis add-task \fItitle\fR
+Append a new task to the workflow (auto-assigns ID: task-001, task-002, ...).
+Writes directly to
+.I state.json
+via Python.
+.TP
+.B jarvis done \fItask-id\fR
+Mark a task done by ID (e.g.
+.IR task-003 ).
+.SH ONLINE COMMANDS
+Require the API server.
+Auto-detect: pings
+.I /api/health
+with a 2-second timeout.
+.TP
+.B jarvis status
+Live platform overview: focus, tasks, device, workflow state.
+Falls back to offline state if API is unreachable.
+.TP
+.B jarvis health
+Platform health check: API server, network, device status.
+.TP
+.B jarvis run \fIcommand\fR
+POST a raw command string to
+.I /api/command
+and print the result.
+.TP
+.B jarvis ask [\fI\-\-stream\fR] \fIquestion\fR
+Ask the AI a question.
+Routes: API server first, then Ollama at
+.I ai_url
+(\fI/api/generate\fR).
+.B \-\-stream
+skips the API and streams tokens directly from Ollama as they are generated.
+.TP
+.B jarvis remember \fInote\fR
+Save a memory note via the API.
+.TP
+.B jarvis set-focus \fItext\fR
+Update the current focus via the API.
+.TP
+.B jarvis sync
+Display sync manifest, peer list, and state summary.
+.TP
+.B jarvis journal [\fIhours\fR]
+Recent activity feed. Default: last 6 hours.
+.SH WORKSPACE
+.TP
+.B jarvis projects
+Scan
+.I projects_root
+for git repositories and display a table: name, branch, dirty flag, latest commit.
+.SH LIVE
+.TP
+.B jarvis watch [\fItarget\fR] [\fI-n secs\fR]
+Live-refresh any view. Default target:
+.IR status .
+Default interval: 10 seconds.
+Press Ctrl-C to exit cleanly.
+.TP
+.B jarvis daemon \fIstart\fR|\fIstop\fR|\fIstatus\fR
+Background poller. Polls
+.I /api/live
+every 30 seconds; sends a desktop notification on focus changes and task completions.
+PID file:
+.IR ~/.jarvis/daemon.pid .
+Log:
+.IR ~/.jarvis/daemon.log .
+.TP
+.B jarvis notify \fImessage\fR
+Send a desktop notification via
+.BR notify-send (1).
+.SH FLAGS
+.TP
+.B \-\-no-color
+Disable ANSI colour output.
+.TP
+.B \-\-json
+Raw JSON output (future phases).
+.SH CONFIGURATION
+.I ~/.jarvis/config
+\[em] KEY=VALUE pairs, one per line.
+.PP
+.TS
+l l.
+Key	Default
+api_url	http://127.0.0.1:5050
+api_key	(empty)
+name	Amit
+ai_provider	ollama
+ai_model	llama3.2
+ai_url	http://127.0.0.1:11434
+state_path	dev/projects/work_station/Kingofyadav/state.json
+projects_root	(empty)
+no_color	0
+.TE
+.SH FILES
+.TP
+.I ~/.jarvis/config
+Runtime configuration.
+.TP
+.I ~/.jarvis/daemon.pid
+PID of the running background daemon.
+.TP
+.I ~/.jarvis/daemon.log
+Daemon activity log.
+.SH SEE ALSO
+.BR notify-send (1),
+.BR ollama (1),
+.BR curl (1)
+.SH AUTHOR
+Amit Ku Yadav

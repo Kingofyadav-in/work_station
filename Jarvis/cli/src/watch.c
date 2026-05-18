@@ -45,10 +45,10 @@ int cmd_watch(int argc, char *argv[]) {
         j_dim("  —  every %ds  —  Ctrl+C to exit\n\n", interval);
 
         if      (strcmp(target, "status") == 0) cmd_status();
-        else if (strcmp(target, "tasks")  == 0) cmd_tasks();
+        else if (strcmp(target, "tasks")  == 0) cmd_tasks(0, NULL);
         else if (strcmp(target, "focus")  == 0) cmd_focus();
         else if (strcmp(target, "health") == 0) cmd_health();
-        else if (strcmp(target, "memory") == 0) cmd_memory();
+        else if (strcmp(target, "memory") == 0) cmd_memory(0, NULL);
 
         /* Sleep in 1s ticks so SIGINT is noticed quickly */
         for (int s = 0; s < interval && !g_watch_stop; s++)

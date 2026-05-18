@@ -452,20 +452,130 @@ static char *ask_ollama(const char *question) {
     return out;
 }
 
+/* ── C-7: streaming Ollama ask ────────────────────────────────── */
+
+typedef struct {
+    char line[8192];
+    int  len;
+    int  done;
+    int  started;
+} StreamCtx;
+
+static size_t ollama_stream_cb(char *ptr, size_t size, size_t nmemb, void *ud) {
+    StreamCtx *ctx = (StreamCtx *)ud;
+    size_t nbytes = size * nmemb;
+
+    for (size_t i = 0; i < nbytes; i++) {
+        char ch = ptr[i];
+        if (ch == '\n') {
+            if (ctx->len > 0) {
+                ctx->line[ctx->len] = '\0';
+                JsonNode *node = json_parse(ctx->line);
+                if (node) {
+                    const char *resp = json_str(node, "response");
+                    if (resp && resp[0]) {
+                        if (!ctx->started) { printf("  "); ctx->started = 1; }
+                        printf("%s", resp);
+                        fflush(stdout);
+                    }
+                    if (json_bool(node, "done", 0)) ctx->done = 1;
+                    json_free(node);
+                }
+                ctx->len = 0;
+            }
+        } else if (ctx->len < (int)(sizeof(ctx->line) - 1)) {
+            ctx->line[ctx->len++] = ch;
+        }
+    }
+    return nbytes;
+}
+
+static int ask_ollama_stream(const char *question) {
+    char url[320];
+    snprintf(url, sizeof(url), "%s/api/generate", g_config.ai_url);
+
+    char context[512] = "You are Jarvis, a personal AI assistant. Be concise.";
+    JsonNode *sv = state_load();
+    if (sv) {
+        const char *name  = json_str(sv, "profile.display_name");
+        const char *focus = json_str(sv, "workflow.current_focus");
+        snprintf(context, sizeof(context),
+            "You are Jarvis, personal AI assistant for %s. "
+            "Current focus: %s. Be concise and direct.",
+            name  && name[0]  ? name  : g_config.name,
+            focus && focus[0] ? focus : "unset");
+        json_free(sv);
+    }
+
+    char esc_ctx[600];  json_escape_str(context,  esc_ctx,  sizeof(esc_ctx));
+    char esc_q[1024];   json_escape_str(question, esc_q,    sizeof(esc_q));
+
+    char body[2048];
+    snprintf(body, sizeof(body),
+        "{\"model\":\"%s\","
+        "\"system\":\"%s\","
+        "\"prompt\":\"%s\","
+        "\"stream\":true}",
+        g_config.ai_model, esc_ctx, esc_q);
+
+    CURL *c = curl_easy_init();
+    if (!c) { j_error("curl init failed\n"); return EXIT_ERR; }
+
+    StreamCtx ctx = {0};
+
+    struct curl_slist *h = NULL;
+    h = curl_slist_append(h, "Content-Type: application/json");
+
+    curl_easy_setopt(c, CURLOPT_URL,               url);
+    curl_easy_setopt(c, CURLOPT_POST,              1L);
+    curl_easy_setopt(c, CURLOPT_POSTFIELDS,        body);
+    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION,     ollama_stream_cb);
+    curl_easy_setopt(c, CURLOPT_WRITEDATA,         &ctx);
+    curl_easy_setopt(c, CURLOPT_HTTPHEADER,        h);
+    curl_easy_setopt(c, CURLOPT_TIMEOUT_MS,        120000L);
+    curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, 3000L);
+    curl_easy_setopt(c, CURLOPT_NOSIGNAL,          1L);
+
+    printf("\n");
+    CURLcode rc = curl_easy_perform(c);
+    curl_slist_free_all(h);
+    curl_easy_cleanup(c);
+
+    if (ctx.started) printf("\n\n");
+
+    if (rc != CURLE_OK || !ctx.done) {
+        if (!ctx.started)
+            j_error("stream failed — Ollama at %s\n", g_config.ai_url);
+        return EXIT_ERR;
+    }
+    return EXIT_OK;
+}
+
 int cmd_ask(int argc, char *argv[]) {
     if (argc < 2) {
-        j_error("usage: jarvis ask \"question\"\n");
+        j_error("usage: jarvis ask [--stream] \"question\"\n");
         return EXIT_ERR;
     }
 
+    int stream = 0;
     char question[1024] = {0};
     for (int i = 1; i < argc; i++) {
-        if (i > 1) strncat(question, " ", sizeof(question) - strlen(question) - 1);
+        if (strcmp(argv[i], "--stream") == 0) { stream = 1; continue; }
+        if (question[0]) strncat(question, " ", sizeof(question) - strlen(question) - 1);
         strncat(question, argv[i], sizeof(question) - strlen(question) - 1);
+    }
+
+    if (!question[0]) {
+        j_error("usage: jarvis ask [--stream] \"question\"\n");
+        return EXIT_ERR;
     }
 
     j_print("\n");
     j_dim("  > %s\n\n", question);
+
+    if (stream) {
+        return ask_ollama_stream(question);
+    }
 
     int online = api_online();
     char *answer = online ? ask_online(question) : NULL;

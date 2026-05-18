@@ -75,42 +75,42 @@ int cmd_help(int argc, char *argv[]) {
 
     j_bold("\n  Online  ");
     j_dim("(auto: API first, fallback offline)\n");
-    j_print("    %-16s  %s\n", "status",  "Overview — live platform + tasks");
-    j_print("    %-16s  %s\n", "health",  "Platform health — API, network, device");
-    j_print("    %-16s  %s\n", "run",     "Run a Jarvis command via API");
-    j_print("    %-16s  %s\n", "ask",     "Ask AI a question (API → Ollama fallback)");
+    j_print("    %-20s  %s\n", "status",         "Overview — live platform + tasks");
+    j_print("    %-20s  %s\n", "health",         "Platform health — API, network, device");
+    j_print("    %-20s  %s\n", "run",            "Run a Jarvis command via API");
+    j_print("    %-20s  %s\n", "ask [--stream]", "Ask AI (API → Ollama); stream tokens live");
 
     j_bold("\n  Offline  ");
     j_dim("(reads state.json directly)\n");
-    j_print("    %-16s  %s\n", "who",       "Identity profile");
-    j_print("    %-16s  %s\n", "focus",     "Current focus and next actions");
-    j_print("    %-16s  %s\n", "tasks",     "Task list with status");
-    j_print("    %-16s  %s\n", "memory",    "Recent memory entries");
+    j_print("    %-20s  %s\n", "who",              "Identity profile");
+    j_print("    %-20s  %s\n", "focus",            "Current focus and next actions");
+    j_print("    %-20s  %s\n", "tasks [--blocked]","Task list; --blocked shows blockers");
+    j_print("    %-20s  %s\n", "memory [search]",  "Recent memories; search <query> filters");
 
-    j_print("    %-16s  %s\n", "add-task",  "Add a task to workflow");
-    j_print("    %-16s  %s\n", "done",      "Mark a task done");
+    j_print("    %-20s  %s\n", "add-task",  "Add a task to workflow");
+    j_print("    %-20s  %s\n", "done",      "Mark a task done");
 
     j_bold("\n  Write  ");
     j_dim("(API required)\n");
-    j_print("    %-16s  %s\n", "remember",  "Save a memory note");
-    j_print("    %-16s  %s\n", "set-focus", "Set current focus");
-    j_print("    %-16s  %s\n", "sync",      "Sync device status and peers");
-    j_print("    %-16s  %s\n", "journal",   "Recent activity feed  [hours]");
+    j_print("    %-20s  %s\n", "remember",  "Save a memory note");
+    j_print("    %-20s  %s\n", "set-focus", "Set current focus");
+    j_print("    %-20s  %s\n", "sync",      "Sync device status and peers");
+    j_print("    %-20s  %s\n", "journal",   "Recent activity feed  [hours]");
 
     j_bold("\n  Workspace\n");
-    j_print("    %-16s  %s\n", "projects",  "List git repos with branch + status");
+    j_print("    %-20s  %s\n", "projects",  "List git repos with branch + status");
 
     j_bold("\n  Live\n");
-    j_print("    %-16s  %s\n", "watch",     "Live-refresh a view  [target] [-n secs]");
-    j_print("    %-16s  %s\n", "daemon",    "Background poller   [start|stop|status]");
-    j_print("    %-16s  %s\n", "notify",    "Desktop notification <message>");
+    j_print("    %-20s  %s\n", "watch",     "Live-refresh a view  [target] [-n secs]");
+    j_print("    %-20s  %s\n", "daemon",    "Background poller   [start|stop|status]");
+    j_print("    %-20s  %s\n", "notify",    "Desktop notification <message>");
 
     j_bold("\n  Flags\n");
-    j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
-    j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
+    j_print("    %-20s  %s\n", "--json",     "Output raw JSON (future phases)");
+    j_print("    %-20s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-7+\n");
-    j_dim("    ask --stream  memory search  task blockers\n\n");
+    j_bold("\n  Coming in C-8+\n");
+    j_dim("    ask --model  memory tag  task estimate  man page\n\n");
 
     return EXIT_OK;
 }

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include "jarvis.h"
@@ -167,7 +168,12 @@ static const char *task_icon(const char *st) {
     return "-"; /* todo */
 }
 
-int cmd_tasks(void) {
+int cmd_tasks(int argc, char *argv[]) {
+    int show_blocked = 0;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--blocked") == 0) show_blocked = 1;
+    }
+
     JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
@@ -175,6 +181,33 @@ int cmd_tasks(void) {
 
     if (total == 0) {
         j_dim("\n  No tasks.\n\n");
+        json_free(s);
+        return EXIT_OK;
+    }
+
+    if (show_blocked) {
+        int found = 0;
+        for (int i = 0; i < total; i++) {
+            JsonNode *t = json_item(s, "workflow.tasks", i);
+            if (!t) continue;
+            const char *status = json_str(t, "status");
+            if (!status || strcmp(status, "blocked") != 0) continue;
+            if (!found) { j_bold("\n  Blocked Tasks\n\n"); }
+            found++;
+            const char *title = json_str(t, "title");
+            const char *id    = json_str(t, "id");
+            j_print("  ["); j_error("!"); j_print("] %s", title ? title : "\xe2\x80\x94");
+            if (id && id[0]) j_dim("  (%s)", id);
+            j_print("\n");
+            int nb = json_count(t, "blockers");
+            for (int b = 0; b < nb; b++) {
+                JsonNode *bl = json_item(t, "blockers", b);
+                if (bl && bl->type == JSON_STRING && bl->sv && bl->sv[0])
+                    j_dim("      blocked by: %s\n", bl->sv);
+            }
+        }
+        if (!found) j_dim("\n  No blocked tasks.\n");
+        j_print("\n");
         json_free(s);
         return EXIT_OK;
     }
@@ -196,13 +229,13 @@ int cmd_tasks(void) {
         int is_cancelled = status && strcmp(status, "cancelled") == 0;
 
         if (is_done || is_cancelled) {
-            j_dim("  [%s] %s\n", icon, title ? title : "—");
+            j_dim("  [%s] %s\n", icon, title ? title : "\xe2\x80\x94");
         } else if (is_blocked) {
-            j_print("  ["); j_error("!"); j_print("] %s", title ? title : "—");
+            j_print("  ["); j_error("!"); j_print("] %s", title ? title : "\xe2\x80\x94");
             if (due && due[0]) j_dim("  due: %s", due);
             j_print("\n");
         } else {
-            j_print("  [%s] %s", icon, title ? title : "—");
+            j_print("  [%s] %s", icon, title ? title : "\xe2\x80\x94");
             if (due && due[0]) j_dim("  due: %s", due);
             j_print("\n");
         }
@@ -215,7 +248,44 @@ int cmd_tasks(void) {
 
 /* ── jarvis memory ──────────────────────────────────────────── */
 
-int cmd_memory(void) {
+static int mem_icontains(const char *hay, const char *needle) {
+    if (!hay || !needle || !*needle) return 0;
+    size_t nlen = strlen(needle);
+    for (const char *p = hay; *p; p++) {
+        size_t i;
+        for (i = 0; i < nlen; i++) {
+            if (tolower((unsigned char)p[i]) != tolower((unsigned char)needle[i])) break;
+        }
+        if (i == nlen) return 1;
+    }
+    return 0;
+}
+
+static void print_memory_row(JsonNode *m) {
+    const char *text = json_str(m, "text");
+    const char *when = json_str(m, "created_at");
+    const char *type = json_str(m, "type");
+    char date[12] = {0};
+    if (when && strlen(when) >= 10)
+        snprintf(date, sizeof(date), "%.10s", when);
+    j_dim("  %s", date[0] ? date : "----------");
+    if (type && type[0]) j_dim("  [%s]", type);
+    j_print("  %s\n", text ? text : "\xe2\x80\x94");
+}
+
+int cmd_memory(int argc, char *argv[]) {
+    const char *query = NULL;
+    char qbuf[512] = {0};
+
+    if (argc >= 2 && strcmp(argv[1], "search") == 0) {
+        if (argc < 3) { j_error("usage: jarvis memory search <query>\n"); return EXIT_ERR; }
+        for (int i = 2; i < argc; i++) {
+            if (i > 2) strncat(qbuf, " ", sizeof(qbuf) - strlen(qbuf) - 1);
+            strncat(qbuf, argv[i], sizeof(qbuf) - strlen(qbuf) - 1);
+        }
+        query = qbuf;
+    }
+
     JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
@@ -223,6 +293,30 @@ int cmd_memory(void) {
 
     if (total == 0) {
         j_dim("\n  No memories stored.\n\n");
+        json_free(s);
+        return EXIT_OK;
+    }
+
+    if (query) {
+        int found = 0;
+        for (int i = total - 1; i >= 0; i--) {
+            JsonNode *m = json_item(s, "memory", i);
+            if (!m) continue;
+            const char *text = json_str(m, "text");
+            const char *type = json_str(m, "type");
+            if (!mem_icontains(text, query) && !mem_icontains(type, query)) continue;
+            if (!found) {
+                j_bold("\n  Memory search  ");
+                j_dim("\"%s\"\n\n", query);
+            }
+            found++;
+            print_memory_row(m);
+        }
+        if (!found) {
+            j_dim("\n  No results for \"%s\"\n\n", query);
+        } else {
+            j_print("\n");
+        }
         json_free(s);
         return EXIT_OK;
     }
@@ -235,17 +329,7 @@ int cmd_memory(void) {
     for (int i = total - 1; i >= start; i--) {
         JsonNode *m = json_item(s, "memory", i);
         if (!m) continue;
-        const char *text = json_str(m, "text");
-        const char *when = json_str(m, "created_at");
-        const char *type = json_str(m, "type");
-
-        char date[12] = {0};
-        if (when && strlen(when) >= 10)
-            snprintf(date, sizeof(date), "%.10s", when);
-
-        j_dim("  %s", date[0] ? date : "----------");
-        if (type && type[0]) j_dim("  [%s]", type);
-        j_print("  %s\n", text ? text : "\xe2\x80\x94");
+        print_memory_row(m);
     }
     j_print("\n");
 
