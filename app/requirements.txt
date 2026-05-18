@@ -1,5 +1,5 @@
-streamlit
-openai
-anthropic>=0.25.0
-watchdog
-rapidfuzz
+anthropic==0.97.0
+openai==2.32.0
+rapidfuzz==3.14.5
+streamlit==1.56.0
+watchdog==6.0.0

@@ -20,10 +20,6 @@ _SESSION_FILE  = _ROOT_DIR_AUTH / "logs" / "dashboard_session.json"
 _SESSION_TTL_HOURS = 24
 
 
-def _token_for_password(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()[:32]
-
-
 def _save_session(token: str) -> None:
     _SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     _SESSION_FILE.write_text(
@@ -52,18 +48,16 @@ def _check_password() -> bool:
             st.stop()
         return True
 
-    expected_token = _token_for_password(_pw_env)
-
     def _verify(entered: str) -> bool:
         return hmac.compare_digest(
             hashlib.sha256(entered.encode()).hexdigest(),
             hashlib.sha256(_pw_env.encode()).hexdigest(),
         )
 
-    # Restore auth from session file (survives browser refresh)
-    if not st.session_state.get("_auth_ok"):
-        if _load_session() == expected_token:
-            st.session_state["_auth_ok"] = True
+    # Restore auth from session file — file presence + TTL is the credential
+    # (the file lives on your local filesystem behind the same OS permissions as everything else)
+    if not st.session_state.get("_auth_ok") and _load_session():
+        st.session_state["_auth_ok"] = True
 
     if st.session_state.get("_auth_ok"):
         return True
@@ -75,7 +69,7 @@ def _check_password() -> bool:
     if st.button("Login", type="primary"):
         if _verify(entered):
             st.session_state["_auth_ok"] = True
-            _save_session(expected_token)   # persist so refresh skips login
+            _save_session(secrets.token_hex(32))   # random token — not derived from password
             st.rerun()
         else:
             st.error("Incorrect password.")
@@ -443,4 +437,5 @@ with right:
     section_label("Recent Memory")
     render_memory_cards(state["memory"][-4:])
 
-maybe_auto_refresh(True, 4)
+_home_refresh = st.sidebar.slider("Refresh every (s)", 5, 60, 10, key="home_refresh_interval")
+maybe_auto_refresh(True, _home_refresh)

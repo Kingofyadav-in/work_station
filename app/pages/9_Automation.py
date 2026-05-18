@@ -311,4 +311,5 @@ with right:
                 unsafe_allow_html=True,
             )
 
-maybe_auto_refresh(True, 4)
+_aut_refresh = st.sidebar.slider("Refresh every (s)", 5, 60, 10, key="aut_refresh_interval")
+maybe_auto_refresh(True, _aut_refresh)

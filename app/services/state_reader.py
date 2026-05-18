@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import streamlit as st
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -34,9 +35,6 @@ PROFILES_PATH = JARVIS_DIR / "profiles.json"
 BUS_LOG_PATH = ROOT_DIR / "logs" / "bus.log"
 KING_PID_PATH = ROOT_DIR / "logs" / "kingofyadav.pid"
 
-_STATE_CACHE: tuple[float, dict] = (0.0, {})
-_STATE_TTL = 2.5
-
 
 def _read_json(path: Path, default: dict[str, Any] | None = None) -> dict[str, Any]:
     default = default or {}
@@ -63,12 +61,8 @@ def get_listener_status() -> dict[str, Any]:
     return {"online": False, "pids": []}
 
 
+@st.cache_data(ttl=2.5, show_spinner=False)
 def get_dashboard_state() -> dict[str, Any]:
-    global _STATE_CACHE
-    import time as _time
-    _now = _time.time()
-    if _STATE_CACHE[1] and _now - _STATE_CACHE[0] < _STATE_TTL:
-        return _STATE_CACHE[1]
     state = enrich_dashboard_state(get_hi_state())
     profiles = get_profiles()
     system = get_system_info()
@@ -117,7 +111,6 @@ def get_dashboard_state() -> dict[str, Any]:
         "last_event": last_event or {},
     }
     save_dashboard_state_snapshot(_result)
-    _STATE_CACHE = (_time.time(), _result)
     return _result
 
 
