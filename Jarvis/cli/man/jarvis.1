@@ -1,4 +1,4 @@
-.TH JARVIS 1 "May 2026" "Jarvis CLI 0.7.0" "User Commands"
+.TH JARVIS 1 "May 2026" "Jarvis CLI 0.8.0" "User Commands"
 .SH NAME
 jarvis \- personal AI assistant CLI
 .SH SYNOPSIS
@@ -24,6 +24,13 @@ Print the full command reference.
 .B jarvis version
 Show version, compiler, OS, and build date.
 .TP
+.B jarvis config
+Display all current config values (from
+.I ~/.jarvis/config
+plus compiled defaults). The
+.I api_key
+is masked to the first 8 characters.
+.TP
 .B jarvis time
 Show current date, clock, and timezone.
 .TP
@@ -45,10 +52,16 @@ Task list with status icons.
 .B \-\-blocked
 shows only blocked tasks and expands each task's blockers array.
 .TP
-.B jarvis memory [\fIsearch\fR \fIquery\fR]
+.B jarvis memory [\fIsearch\fR \fIquery\fR] [\fItag\fR \fItype\fR]
 Recent memory entries (last 10).
 .B search
 \fIquery\fR performs a case-insensitive substring search across all entries.
+.B tag
+\fItype\fR filters to entries whose
+.I type
+field exactly matches (e.g.
+.BR note ,
+.BR decision ).
 .TP
 .B jarvis add-task \fItitle\fR
 Append a new task to the workflow (auto-assigns ID: task-001, task-002, ...).
@@ -59,6 +72,12 @@ via Python.
 .B jarvis done \fItask-id\fR
 Mark a task done by ID (e.g.
 .IR task-003 ).
+.TP
+.B jarvis estimate \fItask-id\fR \fIminutes\fR
+Set the time estimate for a task.
+The estimate appears in
+.B jarvis tasks
+output alongside the task, and a total remaining estimate is shown at the bottom.
 .SH ONLINE COMMANDS
 Require the API server.
 Auto-detect: pings
@@ -77,13 +96,17 @@ POST a raw command string to
 .I /api/command
 and print the result.
 .TP
-.B jarvis ask [\fI\-\-stream\fR] \fIquestion\fR
+.B jarvis ask [\fI\-\-stream\fR] [\fI\-\-model\fR \fImodel\fR] \fIquestion\fR
 Ask the AI a question.
 Routes: API server first, then Ollama at
 .I ai_url
 (\fI/api/generate\fR).
 .B \-\-stream
-skips the API and streams tokens directly from Ollama as they are generated.
+skips the API and streams tokens directly from Ollama as they arrive.
+.B \-\-model
+overrides
+.I ai_model
+for this call only.
 .TP
 .B jarvis remember \fInote\fR
 Save a memory note via the API.

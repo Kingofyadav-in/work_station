@@ -1,7 +1,7 @@
 #ifndef JARVIS_H
 #define JARVIS_H
 
-#define JARVIS_VERSION  "0.7.0"
+#define JARVIS_VERSION  "0.8.0"
 #define JARVIS_NAME     "JARVIS"
 #define JARVIS_API_URL  "http://127.0.0.1:5050"
 #define JARVIS_CONFIG   ".jarvis/config"
@@ -52,6 +52,7 @@ int cmd_memory(int argc, char *argv[]);
 int cmd_status_offline(void);
 int cmd_add_task(int argc, char *argv[]);
 int cmd_done(int argc, char *argv[]);
+int cmd_estimate(int argc, char *argv[]);
 struct JsonNode *state_load(void);  /* load + parse state.json; caller json_frees */
 
 /* API bridge commands (api.c — requires libcurl) */
@@ -94,6 +95,7 @@ void j_box_empty(void);
 /* Config */
 void config_defaults(JarvisConfig *cfg);
 int  config_load(JarvisConfig *cfg);
+int  cmd_config(void);
 
 /* Utils */
 const char *jarvis_time_str(void);   /* "Mon 18 May  13:27" — pure ASCII */

@@ -409,7 +409,7 @@ static char *ask_online(const char *question) {
 }
 
 /* Offline path — direct Ollama call at g_config.ai_url */
-static char *ask_ollama(const char *question) {
+static char *ask_ollama(const char *question, const char *model) {
     char url[320];
     snprintf(url, sizeof(url), "%s/api/generate", g_config.ai_url);
 
@@ -436,7 +436,7 @@ static char *ask_ollama(const char *question) {
         "\"system\":\"%s\","
         "\"prompt\":\"%s\","
         "\"stream\":false}",
-        g_config.ai_model, esc_ctx, esc_q);
+        model, esc_ctx, esc_q);
 
     long code = 0;
     char *raw = http_post(url, body, 60000L, &code);
@@ -490,7 +490,7 @@ static size_t ollama_stream_cb(char *ptr, size_t size, size_t nmemb, void *ud) {
     return nbytes;
 }
 
-static int ask_ollama_stream(const char *question) {
+static int ask_ollama_stream(const char *question, const char *model) {
     char url[320];
     snprintf(url, sizeof(url), "%s/api/generate", g_config.ai_url);
 
@@ -516,7 +516,7 @@ static int ask_ollama_stream(const char *question) {
         "\"system\":\"%s\","
         "\"prompt\":\"%s\","
         "\"stream\":true}",
-        g_config.ai_model, esc_ctx, esc_q);
+        model, esc_ctx, esc_q);
 
     CURL *c = curl_easy_init();
     if (!c) { j_error("curl init failed\n"); return EXIT_ERR; }
@@ -553,28 +553,38 @@ static int ask_ollama_stream(const char *question) {
 
 int cmd_ask(int argc, char *argv[]) {
     if (argc < 2) {
-        j_error("usage: jarvis ask [--stream] \"question\"\n");
+        j_error("usage: jarvis ask [--stream] [--model <model>] \"question\"\n");
         return EXIT_ERR;
     }
 
-    int stream = 0;
-    char question[1024] = {0};
+    int         stream = 0;
+    const char *model  = g_config.ai_model;
+    char        question[1024] = {0};
+
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--stream") == 0) { stream = 1; continue; }
-        if (question[0]) strncat(question, " ", sizeof(question) - strlen(question) - 1);
-        strncat(question, argv[i], sizeof(question) - strlen(question) - 1);
+        if (strcmp(argv[i], "--stream") == 0) {
+            stream = 1;
+        } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+            model = argv[++i];
+        } else {
+            if (question[0]) strncat(question, " ", sizeof(question) - strlen(question) - 1);
+            strncat(question, argv[i], sizeof(question) - strlen(question) - 1);
+        }
     }
 
     if (!question[0]) {
-        j_error("usage: jarvis ask [--stream] \"question\"\n");
+        j_error("usage: jarvis ask [--stream] [--model <model>] \"question\"\n");
         return EXIT_ERR;
     }
 
     j_print("\n");
-    j_dim("  > %s\n\n", question);
+    j_dim("  > %s\n", question);
+    if (model != g_config.ai_model)
+        j_dim("  model: %s\n", model);
+    j_print("\n");
 
     if (stream) {
-        return ask_ollama_stream(question);
+        return ask_ollama_stream(question, model);
     }
 
     int online = api_online();
@@ -582,7 +592,7 @@ int cmd_ask(int argc, char *argv[]) {
 
     if (!answer && strcmp(g_config.ai_provider, "ollama") == 0) {
         if (!online) j_dim("  API offline — asking Ollama directly\n\n");
-        answer = ask_ollama(question);
+        answer = ask_ollama(question, model);
     }
 
     if (!answer) {

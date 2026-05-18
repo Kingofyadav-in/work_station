@@ -42,12 +42,14 @@ int main(int argc, char *argv[]) {
 
     if (strcmp(cmd, "time")   == 0) return cmd_time();
     if (strcmp(cmd, "hello")  == 0) return cmd_hello();
+    if (strcmp(cmd, "config") == 0) return cmd_config();
 
     /* Offline state — reads state.json directly */
     if (strcmp(cmd, "who")    == 0) return cmd_who();
     if (strcmp(cmd, "focus")  == 0) return cmd_focus();
-    if (strcmp(cmd, "tasks")  == 0) return cmd_tasks(argc - 1, argv + 1);
-    if (strcmp(cmd, "memory") == 0) return cmd_memory(argc - 1, argv + 1);
+    if (strcmp(cmd, "tasks")    == 0) return cmd_tasks(argc - 1, argv + 1);
+    if (strcmp(cmd, "memory")   == 0) return cmd_memory(argc - 1, argv + 1);
+    if (strcmp(cmd, "estimate") == 0) return cmd_estimate(argc - 1, argv + 1);
 
     /* Online/offline auto commands */
     if (strcmp(cmd, "status")    == 0) return cmd_status();

@@ -51,6 +51,35 @@ static char *run_py(const char *script, const char *path, const char *arg) {
     return strdup(buf);
 }
 
+/* Same as run_py but passes two extra args after path. */
+static char *run_py3(const char *script, const char *path,
+                     const char *arg1, const char *arg2) {
+    int pfd[2];
+    if (pipe(pfd) != 0) return NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) { close(pfd[0]); close(pfd[1]); return NULL; }
+
+    if (pid == 0) {
+        close(pfd[0]);
+        dup2(pfd[1], STDOUT_FILENO);
+        close(pfd[1]);
+        execlp("python3", "python3", "-c", script, path, arg1, arg2, (char *)NULL);
+        _exit(1);
+    }
+
+    close(pfd[1]);
+    char buf[256] = {0};
+    ssize_t n = read(pfd[0], buf, sizeof(buf) - 1);
+    if (n > 0) { buf[n] = '\0'; if (buf[n-1] == '\n') buf[n-1] = '\0'; }
+    close(pfd[0]);
+
+    int st;
+    waitpid(pid, &st, 0);
+    if (!WIFEXITED(st) || WEXITSTATUS(st) != 0) return NULL;
+    return strdup(buf);
+}
+
 /* Read entire file into a malloc'd buffer — caller must free */
 static char *file_read(const char *path) {
     FILE *f = fopen(path, "r");
@@ -212,6 +241,16 @@ int cmd_tasks(int argc, char *argv[]) {
         return EXIT_OK;
     }
 
+    /* total estimate for active tasks */
+    int total_est = 0;
+    for (int i = 0; i < total; i++) {
+        JsonNode *t = json_item(s, "workflow.tasks", i);
+        if (!t) continue;
+        const char *st = json_str(t, "status");
+        if (st && (strcmp(st, "done") == 0 || strcmp(st, "cancelled") == 0)) continue;
+        total_est += json_int(t, "estimate_minutes", 0);
+    }
+
     j_bold("\n  Tasks  ");
     j_dim("(%d)\n\n", total);
 
@@ -223,22 +262,40 @@ int cmd_tasks(int argc, char *argv[]) {
         const char *status = json_str(t, "status");
         const char *due    = json_str(t, "due");
         const char *icon   = task_icon(status);
+        int est = json_int(t, "estimate_minutes", 0);
 
         int is_done      = status && strcmp(status, "done")      == 0;
         int is_blocked   = status && strcmp(status, "blocked")   == 0;
         int is_cancelled = status && strcmp(status, "cancelled") == 0;
+        int is_active    = !is_done && !is_cancelled;
 
         if (is_done || is_cancelled) {
             j_dim("  [%s] %s\n", icon, title ? title : "\xe2\x80\x94");
         } else if (is_blocked) {
             j_print("  ["); j_error("!"); j_print("] %s", title ? title : "\xe2\x80\x94");
             if (due && due[0]) j_dim("  due: %s", due);
+            if (is_active && est > 0) {
+                if (est >= 60) j_dim("  ~%dh%dm", est / 60, est % 60);
+                else           j_dim("  ~%dm", est);
+            }
             j_print("\n");
         } else {
             j_print("  [%s] %s", icon, title ? title : "\xe2\x80\x94");
             if (due && due[0]) j_dim("  due: %s", due);
+            if (is_active && est > 0) {
+                if (est >= 60) j_dim("  ~%dh%dm", est / 60, est % 60);
+                else           j_dim("  ~%dm", est);
+            }
             j_print("\n");
         }
+    }
+
+    if (total_est > 0) {
+        j_print("\n");
+        if (total_est >= 60)
+            j_dim("  estimated remaining: %dh %dm\n", total_est / 60, total_est % 60);
+        else
+            j_dim("  estimated remaining: %dm\n", total_est);
     }
     j_print("\n");
 
@@ -277,6 +334,8 @@ int cmd_memory(int argc, char *argv[]) {
     const char *query = NULL;
     char qbuf[512] = {0};
 
+    const char *tag = NULL;
+
     if (argc >= 2 && strcmp(argv[1], "search") == 0) {
         if (argc < 3) { j_error("usage: jarvis memory search <query>\n"); return EXIT_ERR; }
         for (int i = 2; i < argc; i++) {
@@ -284,6 +343,9 @@ int cmd_memory(int argc, char *argv[]) {
             strncat(qbuf, argv[i], sizeof(qbuf) - strlen(qbuf) - 1);
         }
         query = qbuf;
+    } else if (argc >= 2 && strcmp(argv[1], "tag") == 0) {
+        if (argc < 3) { j_error("usage: jarvis memory tag <type>\n"); return EXIT_ERR; }
+        tag = argv[2];
     }
 
     JsonNode *s = state_load();
@@ -314,6 +376,29 @@ int cmd_memory(int argc, char *argv[]) {
         }
         if (!found) {
             j_dim("\n  No results for \"%s\"\n\n", query);
+        } else {
+            j_print("\n");
+        }
+        json_free(s);
+        return EXIT_OK;
+    }
+
+    if (tag) {
+        int found = 0;
+        for (int i = total - 1; i >= 0; i--) {
+            JsonNode *m = json_item(s, "memory", i);
+            if (!m) continue;
+            const char *type = json_str(m, "type");
+            if (!type || strcmp(type, tag) != 0) continue;
+            if (!found) {
+                j_bold("\n  Memory  ");
+                j_dim("tag: %s\n\n", tag);
+            }
+            found++;
+            print_memory_row(m);
+        }
+        if (!found) {
+            j_dim("\n  No memories with tag \"%s\"\n\n", tag);
         } else {
             j_print("\n");
         }
@@ -435,5 +520,48 @@ int cmd_done(int argc, char *argv[]) {
 
     j_success("  Done: %s\n\n", argv[1]);
     free(out);
+    return EXIT_OK;
+}
+
+/* ── jarvis estimate ────────────────────────────────────────── */
+
+static const char *PY_ESTIMATE =
+    "import json,sys\n"
+    "path,tid,mins=sys.argv[1],sys.argv[2],int(sys.argv[3])\n"
+    "s=json.load(open(path))\n"
+    "found=False\n"
+    "for t in s.get('workflow',{}).get('tasks',[]):\n"
+    "    if t.get('id')==tid:\n"
+    "        t['estimate_minutes']=mins\n"
+    "        found=True\n"
+    "        break\n"
+    "if not found: print('error: task not found'); sys.exit(1)\n"
+    "json.dump(s,open(path,'w'),indent=2,ensure_ascii=False)\n"
+    "print('ok')\n";
+
+int cmd_estimate(int argc, char *argv[]) {
+    if (argc < 3) {
+        j_error("usage: jarvis estimate <task-id> <minutes>\n");
+        return EXIT_ERR;
+    }
+
+    /* validate minutes is a positive integer */
+    int mins = atoi(argv[2]);
+    if (mins <= 0) {
+        j_error("minutes must be a positive integer\n");
+        return EXIT_ERR;
+    }
+
+    char path[1024]; state_get_path(path, sizeof(path));
+    j_print("\n");
+
+    char *out = run_py3(PY_ESTIMATE, path, argv[1], argv[2]);
+    if (!out) { j_error("task not found: %s\n", argv[1]); return EXIT_ERR; }
+    free(out);
+
+    if (mins >= 60)
+        j_success("  %s  estimated: %dh %dm\n\n", argv[1], mins / 60, mins % 60);
+    else
+        j_success("  %s  estimated: %dm\n\n", argv[1], mins);
     return EXIT_OK;
 }
