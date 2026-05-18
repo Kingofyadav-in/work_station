@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <curl/curl.h>
 #include "jarvis.h"
 #include "json.h"
@@ -106,10 +108,18 @@ static void api_url(char *buf, size_t sz, const char *path) {
     snprintf(buf, sz, "%s%s", g_config.api_url, path);
 }
 
-/* ── public: api_online ─────────────────────────────────────────── */
+/* ── public: api_online / api_get_json ─────────────────────────── */
 
 void api_init(void) {
     curl_global_init(CURL_GLOBAL_ALL);
+}
+
+char *api_get_json(const char *path, long timeout_ms) {
+    char url[512]; api_url(url, sizeof(url), path);
+    long code = 0;
+    char *raw = http_get(url, timeout_ms, &code);
+    if (!raw || code != 200) { free(raw); return NULL; }
+    return raw;
 }
 
 int api_online(void) {
@@ -675,6 +685,30 @@ int cmd_journal(int argc, char *argv[]) {
     j_print("\n");
 
     json_free(root);
+    return EXIT_OK;
+}
+
+/* ── C-6: notify ────────────────────────────────────────────────────── */
+
+/* Send a desktop notification via notify-send (fork+exec, no shell) */
+void api_notify_send(const char *message) {
+    pid_t pid = fork();
+    if (pid < 0) return;
+    if (pid == 0) {
+        execlp("notify-send", "notify-send",
+               "-a", "Jarvis", "-i", "dialog-information",
+               "Jarvis", message, (char *)NULL);
+        _exit(0);
+    }
+    /* Don't wait — fire and forget */
+}
+
+int cmd_notify(int argc, char *argv[]) {
+    if (argc < 2) { j_error("usage: jarvis notify <message>\n"); return EXIT_ERR; }
+    char msg[512] = {0};
+    join_args(msg, sizeof(msg), argc, argv, 1);
+    j_success("  %s\n\n", msg);
+    api_notify_send(msg);
     return EXIT_OK;
 }
 

@@ -1,7 +1,7 @@
 #ifndef JARVIS_H
 #define JARVIS_H
 
-#define JARVIS_VERSION  "0.5.0"
+#define JARVIS_VERSION  "0.6.0"
 #define JARVIS_NAME     "JARVIS"
 #define JARVIS_API_URL  "http://127.0.0.1:5050"
 #define JARVIS_CONFIG   ".jarvis/config"
@@ -55,8 +55,10 @@ int cmd_done(int argc, char *argv[]);
 struct JsonNode *state_load(void);  /* load + parse state.json; caller json_frees */
 
 /* API bridge commands (api.c — requires libcurl) */
-void api_init(void);
-int  api_online(void);
+void  api_init(void);
+int   api_online(void);
+char *api_get_json(const char *path, long timeout_ms); /* malloc'd; caller frees */
+void  api_notify_send(const char *message);            /* fire-and-forget notify-send */
 int  cmd_status(void);
 int  cmd_health(void);
 int  cmd_run(int argc, char *argv[]);
@@ -67,9 +69,16 @@ int  cmd_remember(int argc, char *argv[]);
 int  cmd_set_focus(int argc, char *argv[]);
 int  cmd_sync(void);
 int  cmd_journal(int argc, char *argv[]);
+int  cmd_notify(int argc, char *argv[]);
 
 /* Projects scan (projects.c) */
 int  cmd_projects(void);
+
+/* Watch — live refresh (watch.c) */
+int  cmd_watch(int argc, char *argv[]);
+
+/* Daemon — background poller (daemon.c) */
+int  cmd_daemon(int argc, char *argv[]);
 
 /* Output — box drawing uses BOX_WIDTH=68 visual chars */
 void j_print(const char *fmt, ...);

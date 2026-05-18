@@ -61,10 +61,15 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "add-task")  == 0) return cmd_add_task(argc - 1, argv + 1);
     if (strcmp(cmd, "done")      == 0) return cmd_done(argc - 1, argv + 1);
 
-    /* C-5 commands */
+    /* C-5: workspace */
     if (strcmp(cmd, "projects")  == 0) return cmd_projects();
     if (strcmp(cmd, "sync")      == 0) return cmd_sync();
     if (strcmp(cmd, "journal")   == 0) return cmd_journal(argc - 1, argv + 1);
+
+    /* C-6: live + background */
+    if (strcmp(cmd, "watch")     == 0) return cmd_watch(argc - 1, argv + 1);
+    if (strcmp(cmd, "daemon")    == 0) return cmd_daemon(argc - 1, argv + 1);
+    if (strcmp(cmd, "notify")    == 0) return cmd_notify(argc - 1, argv + 1);
 
     j_error("unknown command '%s'  --  try: jarvis help\n", cmd);
     return EXIT_UNKNOWN;

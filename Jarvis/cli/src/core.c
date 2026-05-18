@@ -100,12 +100,17 @@ int cmd_help(int argc, char *argv[]) {
     j_bold("\n  Workspace\n");
     j_print("    %-16s  %s\n", "projects",  "List git repos with branch + status");
 
+    j_bold("\n  Live\n");
+    j_print("    %-16s  %s\n", "watch",     "Live-refresh a view  [target] [-n secs]");
+    j_print("    %-16s  %s\n", "daemon",    "Background poller   [start|stop|status]");
+    j_print("    %-16s  %s\n", "notify",    "Desktop notification <message>");
+
     j_bold("\n  Flags\n");
     j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
     j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-6+\n");
-    j_dim("    daemon  watch  notify\n\n");
+    j_bold("\n  Coming in C-7+\n");
+    j_dim("    ask --stream  memory search  task blockers\n\n");
 
     return EXIT_OK;
 }
