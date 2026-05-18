@@ -94,13 +94,18 @@ int cmd_help(int argc, char *argv[]) {
     j_dim("(API required)\n");
     j_print("    %-16s  %s\n", "remember",  "Save a memory note");
     j_print("    %-16s  %s\n", "set-focus", "Set current focus");
+    j_print("    %-16s  %s\n", "sync",      "Sync device status and peers");
+    j_print("    %-16s  %s\n", "journal",   "Recent activity feed  [hours]");
+
+    j_bold("\n  Workspace\n");
+    j_print("    %-16s  %s\n", "projects",  "List git repos with branch + status");
 
     j_bold("\n  Flags\n");
     j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
     j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-5+\n");
-    j_dim("    projects  sync  daemon\n\n");
+    j_bold("\n  Coming in C-6+\n");
+    j_dim("    daemon  watch  notify\n\n");
 
     return EXIT_OK;
 }

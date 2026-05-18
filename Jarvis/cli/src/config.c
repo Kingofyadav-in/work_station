@@ -7,9 +7,10 @@ void config_defaults(JarvisConfig *cfg) {
     snprintf(cfg->api_url,     sizeof(cfg->api_url),     "%s", JARVIS_API_URL);
     snprintf(cfg->api_key,     sizeof(cfg->api_key),     "%s", "");
     snprintf(cfg->name,        sizeof(cfg->name),        "%s", "Amit");
-    snprintf(cfg->ai_provider, sizeof(cfg->ai_provider), "%s", "ollama");
-    snprintf(cfg->ai_model,    sizeof(cfg->ai_model),    "%s", "llama3.2");
-    snprintf(cfg->ai_url,      sizeof(cfg->ai_url),      "%s", "http://127.0.0.1:11434");
+    snprintf(cfg->ai_provider,    sizeof(cfg->ai_provider),    "%s", "ollama");
+    snprintf(cfg->ai_model,       sizeof(cfg->ai_model),       "%s", "llama3.2");
+    snprintf(cfg->ai_url,         sizeof(cfg->ai_url),         "%s", "http://127.0.0.1:11434");
+    cfg->projects_root[0] = '\0';   /* derive from HOME at runtime */
     cfg->json_output = 0;
     cfg->no_color    = 0;
 }
@@ -53,8 +54,9 @@ int config_load(JarvisConfig *cfg) {
         else if (strcmp(key, "ai_provider") == 0) snprintf(cfg->ai_provider, sizeof(cfg->ai_provider), "%s", val);
         else if (strcmp(key, "ai_model")    == 0) snprintf(cfg->ai_model,    sizeof(cfg->ai_model),    "%s", val);
         else if (strcmp(key, "ai_url")      == 0) snprintf(cfg->ai_url,      sizeof(cfg->ai_url),      "%s", val);
-        else if (strcmp(key, "no_color")    == 0) cfg->no_color = (strcmp(val, "1") == 0 || strcmp(val, "true") == 0);
-        else if (strcmp(key, "state_path")  == 0) snprintf(cfg->state_path, sizeof(cfg->state_path), "%s", val);
+        else if (strcmp(key, "no_color")       == 0) cfg->no_color = (strcmp(val, "1") == 0 || strcmp(val, "true") == 0);
+        else if (strcmp(key, "state_path")     == 0) snprintf(cfg->state_path,     sizeof(cfg->state_path),     "%s", val);
+        else if (strcmp(key, "projects_root")  == 0) snprintf(cfg->projects_root,  sizeof(cfg->projects_root),  "%s", val);
     }
 
     fclose(f);

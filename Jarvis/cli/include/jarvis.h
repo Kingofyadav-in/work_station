@@ -1,7 +1,7 @@
 #ifndef JARVIS_H
 #define JARVIS_H
 
-#define JARVIS_VERSION  "0.4.0"
+#define JARVIS_VERSION  "0.5.0"
 #define JARVIS_NAME     "JARVIS"
 #define JARVIS_API_URL  "http://127.0.0.1:5050"
 #define JARVIS_CONFIG   ".jarvis/config"
@@ -25,10 +25,11 @@ typedef struct {
     char api_url[256];
     char api_key[256];
     char name[64];
-    char ai_provider[32];   /* ollama | claude | gpt */
-    char ai_model[64];      /* e.g. llama3.2, mistral, claude-3-haiku */
-    char ai_url[256];       /* Ollama base URL: http://127.0.0.1:11434 */
-    char state_path[512];   /* path to state.json — absolute or relative to $HOME */
+    char ai_provider[32];      /* ollama | claude | gpt */
+    char ai_model[64];         /* e.g. llama3.2, mistral, claude-3-haiku */
+    char ai_url[256];          /* Ollama base URL: http://127.0.0.1:11434 */
+    char state_path[512];      /* path to state.json — absolute or relative to $HOME */
+    char projects_root[512];   /* root dir for project scan — absolute or relative to $HOME */
     int  json_output;
     int  no_color;
 } JarvisConfig;
@@ -64,6 +65,11 @@ int  cmd_ask(int argc, char *argv[]);
 /* Write commands — require API (api.c) */
 int  cmd_remember(int argc, char *argv[]);
 int  cmd_set_focus(int argc, char *argv[]);
+int  cmd_sync(void);
+int  cmd_journal(int argc, char *argv[]);
+
+/* Projects scan (projects.c) */
+int  cmd_projects(void);
 
 /* Output — box drawing uses BOX_WIDTH=68 visual chars */
 void j_print(const char *fmt, ...);

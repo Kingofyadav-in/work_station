@@ -529,3 +529,152 @@ int cmd_set_focus(int argc, char *argv[]) {
     return api_write_cmd(cmd, 12000L);
 }
 
+/* ── C-5: sync ──────────────────────────────────────────────────────── */
+
+int cmd_sync(void) {
+    if (!api_online()) {
+        j_error("API not reachable at %s\n", g_config.api_url);
+        return EXIT_ERR;
+    }
+
+    char url[512];
+    long code = 0;
+
+    /* Manifest */
+    api_url(url, sizeof(url), "/api/sync/manifest");
+    char *mraw = http_get(url, 5000L, &code);
+    if (!mraw || code != 200) { free(mraw); j_error("sync manifest unavailable\n"); return EXIT_ERR; }
+    JsonNode *manifest = json_parse(mraw); free(mraw);
+
+    /* Peers */
+    api_url(url, sizeof(url), "/api/sync/peers");
+    char *praw = http_get(url, 5000L, &code);
+    JsonNode *peers = (praw && code == 200) ? json_parse(praw) : NULL;
+    free(praw);
+
+    /* State summary */
+    api_url(url, sizeof(url), "/api/sync/state-summary");
+    char *sraw = http_get(url, 5000L, &code);
+    JsonNode *summary = (sraw && code == 200) ? json_parse(sraw) : NULL;
+    free(sraw);
+
+    const char *device   = json_str(manifest, "label");
+    const char *dev_id   = json_str(manifest, "device_id");
+    const char *last_sync= json_str(manifest, "last_sync");
+    int mem_count        = json_int(manifest, "memory_count", 0);
+    int peer_count       = json_count(peers, "peers");
+
+    char dev_str[128];
+    char id_short[10] = {0};
+    if (dev_id && strlen(dev_id) >= 8) snprintf(id_short, sizeof(id_short), "%.8s", dev_id);
+    snprintf(dev_str, sizeof(dev_str), "%s  (%s)",
+             device ? device : "unknown", id_short[0] ? id_short : "?");
+
+    char peers_str[64];
+    if (peer_count == 0)
+        snprintf(peers_str, sizeof(peers_str), "none registered");
+    else
+        snprintf(peers_str, sizeof(peers_str), "%d peer%s", peer_count, peer_count == 1 ? "" : "s");
+
+    char mem_str[32];
+    snprintf(mem_str, sizeof(mem_str), "%d shareable", mem_count);
+
+    char last_str[64];
+    if (!last_sync || strcmp(last_sync, "null") == 0 || last_sync[0] == '\0')
+        snprintf(last_str, sizeof(last_str), "never");
+    else
+        snprintf(last_str, sizeof(last_str), "%.19s", last_sync); /* trim to datetime */
+
+    j_box_header("SYNC", jarvis_time_str());
+    j_box_empty();
+    j_box_row("Device",   dev_str);
+    j_box_row("Peers",    peers_str);
+    j_box_row("Memory",   mem_str);
+    j_box_row("Last",     last_str);
+    if (summary) {
+        const char *focus = json_str(summary, "current_focus");
+        if (focus && focus[0]) j_box_row("Focus", focus);
+    }
+    j_box_empty();
+    j_box_footer();
+
+    json_free(manifest);
+    if (peers)   json_free(peers);
+    if (summary) json_free(summary);
+    return EXIT_OK;
+}
+
+/* ── C-5: journal ───────────────────────────────────────────────────── */
+
+int cmd_journal(int argc, char *argv[]) {
+    int hours = 24;
+    if (argc >= 2) hours = atoi(argv[1]);
+    if (hours <= 0 || hours > 168) hours = 24;
+
+    if (!api_online()) {
+        j_error("API not reachable at %s\n", g_config.api_url);
+        return EXIT_ERR;
+    }
+
+    char url[512];
+    api_url(url, sizeof(url), "/api/journal");
+    char full_url[640];
+    snprintf(full_url, sizeof(full_url), "%s?hours=%d&limit=30", url, hours);
+
+    long code = 0;
+    char *raw = http_get(full_url, 8000L, &code);
+    if (!raw || code != 200) { free(raw); j_error("journal unavailable\n"); return EXIT_ERR; }
+
+    JsonNode *root = json_parse(raw); free(raw);
+    if (!root) { j_error("failed to parse journal\n"); return EXIT_ERR; }
+
+    int total = json_count(root, "events");
+
+    j_bold("\n  Journal  ");
+    j_dim("(last %dh — %d events)\n\n", hours, total);
+
+    if (total == 0) {
+        j_dim("  No events.\n\n");
+        json_free(root);
+        return EXIT_OK;
+    }
+
+    for (int i = 0; i < total && i < 30; i++) {
+        JsonNode *ev = json_item(root, "events", i);
+        if (!ev) continue;
+        const char *ts      = json_str(ev, "ts");
+        const char *type    = json_str(ev, "type");
+        const char *source  = json_str(ev, "source");
+
+        /* Extract HH:MM from ISO ts: "2026-05-18T14:35:..." */
+        char time_str[8] = {0};
+        if (ts && strlen(ts) >= 16) snprintf(time_str, sizeof(time_str), "%.5s", ts + 11);
+        else if (ts) snprintf(time_str, sizeof(time_str), "--:--");
+
+        char label[32] = {0};
+        if (source && source[0]) snprintf(label, sizeof(label), "%.14s", source);
+        else if (type && type[0]) snprintf(label, sizeof(label), "%.14s", type);
+
+        /* payload is a nested object — extract the most useful field */
+        const char *cmd_str = json_str(ev, "payload.command");
+        const char *task    = json_str(ev, "payload.task");
+        const char *text    = json_str(ev, "payload.text");
+        const char *action  = json_str(ev, "payload.action");
+
+        char detail[72] = {0};
+        if      (cmd_str && cmd_str[0]) snprintf(detail, sizeof(detail), "%.68s", cmd_str);
+        else if (task    && task[0])    snprintf(detail, sizeof(detail), "%.68s", task);
+        else if (text    && text[0])    snprintf(detail, sizeof(detail), "%.68s", text);
+        else if (action  && action[0])  snprintf(detail, sizeof(detail), "%.68s", action);
+        else if (type    && type[0])    snprintf(detail, sizeof(detail), "%.68s", type);
+
+        j_dim("  %s  ", time_str);
+        j_print("%-16s", label);
+        j_dim("  %s\n", detail);
+    }
+    j_print("\n");
+
+    json_free(root);
+    return EXIT_OK;
+}
+
