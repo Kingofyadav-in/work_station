@@ -35,6 +35,7 @@ JsonNode   *json_get(JsonNode *root, const char *path);
 /* Convenience accessors — return default if key missing or wrong type */
 const char *json_str(JsonNode *root, const char *path);          /* NULL if absent */
 int         json_int(JsonNode *root, const char *path, int def);
+int         json_bool(JsonNode *root, const char *path, int def);/* handles JSON true/false */
 int         json_count(JsonNode *root, const char *path);        /* array length, 0 if absent */
 JsonNode   *json_item(JsonNode *root, const char *path, int idx);/* array element by index */
 

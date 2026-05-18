@@ -47,6 +47,13 @@ int cmd_focus(void);
 int cmd_tasks(void);
 int cmd_status_offline(void);
 
+/* API bridge commands (api.c — requires libcurl) */
+void api_init(void);
+int  api_online(void);
+int  cmd_status(void);
+int  cmd_health(void);
+int  cmd_run(int argc, char *argv[]);
+
 /* Output — box drawing uses BOX_WIDTH=68 visual chars */
 void j_print(const char *fmt, ...);
 void j_bold(const char *fmt, ...);

@@ -240,6 +240,16 @@ int json_int(JsonNode *root, const char *path, int def) {
     return (int)n->nv;
 }
 
+int json_bool(JsonNode *root, const char *path, int def) {
+    JsonNode *n = json_get(root, path);
+    if (!n) return def;
+    if (n->type == JSON_BOOL)   return n->bv;
+    if (n->type == JSON_NUMBER) return (int)n->nv != 0;
+    if (n->type == JSON_STRING && n->sv)
+        return strcmp(n->sv, "true") == 0 || strcmp(n->sv, "1") == 0;
+    return def;
+}
+
 int json_count(JsonNode *root, const char *path) {
     JsonNode *n = json_get(root, path);
     if (!n || n->type != JSON_ARRAY) return 0;

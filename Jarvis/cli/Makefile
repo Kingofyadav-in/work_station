@@ -1,7 +1,7 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -std=c11 -O2 -Iinclude
-LDFLAGS =
-SRCS    = src/jarvis.c src/core.c src/output.c src/config.c src/json.c src/state.c
+LDFLAGS = -lcurl
+SRCS    = src/jarvis.c src/core.c src/output.c src/config.c src/json.c src/state.c src/api.c
 OBJS    = $(SRCS:.c=.o)
 TARGET  = jarvis
 INSTALL = $(HOME)/bin

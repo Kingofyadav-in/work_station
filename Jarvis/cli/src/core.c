@@ -73,9 +73,14 @@ int cmd_help(int argc, char *argv[]) {
     j_print("    %-16s  %s\n", "time",    "Current date and time");
     j_print("    %-16s  %s\n", "hello",   "Greeting");
 
-    j_bold("\n  Offline state  ");
+    j_bold("\n  Online  ");
+    j_dim("(auto: API first, fallback offline)\n");
+    j_print("    %-16s  %s\n", "status",  "Overview — live platform + tasks");
+    j_print("    %-16s  %s\n", "health",  "Platform health — API, network, device");
+    j_print("    %-16s  %s\n", "run",     "Run a Jarvis command via API");
+
+    j_bold("\n  Offline  ");
     j_dim("(reads state.json directly)\n");
-    j_print("    %-16s  %s\n", "status",  "Overview — identity, focus, tasks");
     j_print("    %-16s  %s\n", "who",     "Identity profile");
     j_print("    %-16s  %s\n", "focus",   "Current focus and next actions");
     j_print("    %-16s  %s\n", "tasks",   "Task list with status");
@@ -84,8 +89,8 @@ int cmd_help(int argc, char *argv[]) {
     j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
     j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-2+\n");
-    j_dim("    ask  memory  projects  health  sync\n\n");
+    j_bold("\n  Coming in C-3+\n");
+    j_dim("    ask  memory  projects  sync\n\n");
 
     return EXIT_OK;
 }

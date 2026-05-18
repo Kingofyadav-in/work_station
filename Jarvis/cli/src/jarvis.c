@@ -9,6 +9,7 @@ JarvisConfig g_config;
 int main(int argc, char *argv[]) {
     config_defaults(&g_config);
     config_load(&g_config);
+    api_init();
 
     /* Strip global flags from argv before routing.
      * We modify argc/argv in place so subcommand handlers
@@ -42,11 +43,15 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "time")   == 0) return cmd_time();
     if (strcmp(cmd, "hello")  == 0) return cmd_hello();
 
-    /* Offline state — reads state.json directly, no API needed */
+    /* Offline state — reads state.json directly */
     if (strcmp(cmd, "who")    == 0) return cmd_who();
     if (strcmp(cmd, "focus")  == 0) return cmd_focus();
     if (strcmp(cmd, "tasks")  == 0) return cmd_tasks();
-    if (strcmp(cmd, "status") == 0) return cmd_status_offline();
+
+    /* Online/offline auto commands */
+    if (strcmp(cmd, "status") == 0) return cmd_status();
+    if (strcmp(cmd, "health") == 0) return cmd_health();
+    if (strcmp(cmd, "run")    == 0) return cmd_run(argc - 1, argv + 1);
 
     j_error("unknown command '%s'  --  try: jarvis help\n", cmd);
     return EXIT_UNKNOWN;
