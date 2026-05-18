@@ -1,0 +1,53 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "jarvis.h"
+
+/* Global config — loaded once in main, read-only everywhere else */
+JarvisConfig g_config;
+
+int main(int argc, char *argv[]) {
+    config_defaults(&g_config);
+    config_load(&g_config);
+
+    /* Strip global flags from argv before routing.
+     * We modify argc/argv in place so subcommand handlers
+     * receive a clean argument list. */
+    for (int i = 1; i < argc; ) {
+        if (strcmp(argv[i], "--json") == 0) {
+            g_config.json_output = 1;
+            for (int j = i; j < argc - 1; j++) argv[j] = argv[j + 1];
+            argc--;
+        } else if (strcmp(argv[i], "--no-color") == 0) {
+            g_config.no_color = 1;
+            for (int j = i; j < argc - 1; j++) argv[j] = argv[j + 1];
+            argc--;
+        } else {
+            i++;
+        }
+    }
+
+    if (argc == 1) return cmd_default();
+
+    const char *cmd = argv[1];
+
+    if (strcmp(cmd, "help")      == 0 ||
+        strcmp(cmd, "--help")    == 0 ||
+        strcmp(cmd, "-h")        == 0) return cmd_help(argc - 1, argv + 1);
+
+    if (strcmp(cmd, "version")   == 0 ||
+        strcmp(cmd, "--version") == 0 ||
+        strcmp(cmd, "-V")        == 0) return cmd_version();
+
+    if (strcmp(cmd, "time")   == 0) return cmd_time();
+    if (strcmp(cmd, "hello")  == 0) return cmd_hello();
+
+    /* Offline state — reads state.json directly, no API needed */
+    if (strcmp(cmd, "who")    == 0) return cmd_who();
+    if (strcmp(cmd, "focus")  == 0) return cmd_focus();
+    if (strcmp(cmd, "tasks")  == 0) return cmd_tasks();
+    if (strcmp(cmd, "status") == 0) return cmd_status_offline();
+
+    j_error("unknown command '%s'  --  try: jarvis help\n", cmd);
+    return EXIT_UNKNOWN;
+}
