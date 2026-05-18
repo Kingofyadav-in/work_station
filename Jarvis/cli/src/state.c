@@ -22,7 +22,7 @@ static char *file_read(const char *path) {
     return buf;
 }
 
-static JsonNode *load_state(void) {
+JsonNode *state_load(void) {
     const char *home = getenv("HOME");
     if (!home) { j_error("HOME not set\n"); return NULL; }
 
@@ -50,7 +50,7 @@ static JsonNode *load_state(void) {
 /* ── jarvis who ─────────────────────────────────────────────── */
 
 int cmd_who(void) {
-    JsonNode *s = load_state();
+    JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
     const char *display = json_str(s, "profile.display_name");
@@ -77,7 +77,7 @@ int cmd_who(void) {
 /* ── jarvis focus ───────────────────────────────────────────── */
 
 int cmd_focus(void) {
-    JsonNode *s = load_state();
+    JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
     const char *focus  = json_str(s, "workflow.current_focus");
@@ -124,7 +124,7 @@ static const char *task_icon(const char *st) {
 }
 
 int cmd_tasks(void) {
-    JsonNode *s = load_state();
+    JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
     int total = json_count(s, "workflow.tasks");
@@ -172,7 +172,7 @@ int cmd_tasks(void) {
 /* ── jarvis status ──────────────────────────────────────────── */
 
 int cmd_status_offline(void) {
-    JsonNode *s = load_state();
+    JsonNode *s = state_load();
     if (!s) return EXIT_ERR;
 
     const char *name    = json_str(s, "profile.display_name");

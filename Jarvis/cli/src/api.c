@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -329,4 +330,148 @@ int cmd_run(int argc, char *argv[]) {
 
     json_free(root);
     return ok ? EXIT_OK : EXIT_ERR;
+}
+
+/* ── jarvis ask "question" ──────────────────────────────────────────── */
+
+/* Word-wrap text at `width` chars, printing each line with "  " indent */
+static void print_wrapped(const char *text, int width) {
+    if (!text || !text[0]) return;
+    const char *p = text;
+    while (*p) {
+        const char *nl = strchr(p, '\n');
+        int line_len = nl ? (int)(nl - p) : (int)strlen(p);
+
+        if (line_len == 0) {
+            j_print("\n");
+        } else {
+            int pos = 0;
+            while (pos < line_len) {
+                int rem = line_len - pos;
+                if (rem <= width) {
+                    j_print("  %.*s\n", rem, p + pos);
+                    pos += rem;
+                } else {
+                    int wrap = width;
+                    while (wrap > 0 && p[pos + wrap] != ' ') wrap--;
+                    if (wrap == 0) wrap = width;
+                    j_print("  %.*s\n", wrap, p + pos);
+                    pos += wrap;
+                    while (pos < line_len && p[pos] == ' ') pos++;
+                }
+            }
+        }
+        p += line_len;
+        if (*p == '\n') p++;
+    }
+}
+
+/* Online path — POST /api/command "ask <question>", return result or NULL */
+static char *ask_online(const char *question) {
+    char url[512]; api_url(url, sizeof(url), "/api/command");
+
+    char esc[1024]; json_escape_str(question, esc, sizeof(esc));
+    char body[1200];
+    snprintf(body, sizeof(body), "{\"command\":\"ask %s\"}", esc);
+
+    long code = 0;
+    char *raw = http_post(url, body, 60000L, &code);
+    if (!raw) return NULL;
+
+    if (code == 429) { free(raw); j_error("rate limit exceeded\n"); return NULL; }
+    if (code != 200) { free(raw); return NULL; }
+
+    JsonNode *root = json_parse(raw);
+    free(raw);
+    if (!root) return NULL;
+
+    const char *result = json_str(root, "result");
+    const char *error  = json_str(root, "error");
+    char *out = NULL;
+
+    if (result && result[0]) {
+        out = strdup(result);
+    } else if (error && error[0]) {
+        out = strdup(error);
+    }
+    json_free(root);
+    return out;
+}
+
+/* Offline path — direct Ollama call at g_config.ai_url */
+static char *ask_ollama(const char *question) {
+    char url[320];
+    snprintf(url, sizeof(url), "%s/api/generate", g_config.ai_url);
+
+    /* Build context from state.json if available */
+    char context[512] = "You are Jarvis, a personal AI assistant. Be concise.";
+    JsonNode *s = state_load();
+    if (s) {
+        const char *name  = json_str(s, "profile.display_name");
+        const char *focus = json_str(s, "workflow.current_focus");
+        snprintf(context, sizeof(context),
+            "You are Jarvis, personal AI assistant for %s. "
+            "Current focus: %s. Be concise and direct.",
+            name  && name[0]  ? name  : g_config.name,
+            focus && focus[0] ? focus : "unset");
+        json_free(s);
+    }
+
+    char esc_ctx[600];  json_escape_str(context,  esc_ctx,  sizeof(esc_ctx));
+    char esc_q[1024];   json_escape_str(question, esc_q,    sizeof(esc_q));
+
+    char body[2048];
+    snprintf(body, sizeof(body),
+        "{\"model\":\"%s\","
+        "\"system\":\"%s\","
+        "\"prompt\":\"%s\","
+        "\"stream\":false}",
+        g_config.ai_model, esc_ctx, esc_q);
+
+    long code = 0;
+    char *raw = http_post(url, body, 60000L, &code);
+    if (!raw || code != 200) { free(raw); return NULL; }
+
+    JsonNode *root = json_parse(raw);
+    free(raw);
+    if (!root) return NULL;
+
+    const char *resp = json_str(root, "response");
+    char *out = (resp && resp[0]) ? strdup(resp) : NULL;
+    json_free(root);
+    return out;
+}
+
+int cmd_ask(int argc, char *argv[]) {
+    if (argc < 2) {
+        j_error("usage: jarvis ask \"question\"\n");
+        return EXIT_ERR;
+    }
+
+    char question[1024] = {0};
+    for (int i = 1; i < argc; i++) {
+        if (i > 1) strncat(question, " ", sizeof(question) - strlen(question) - 1);
+        strncat(question, argv[i], sizeof(question) - strlen(question) - 1);
+    }
+
+    j_print("\n");
+    j_dim("  > %s\n\n", question);
+
+    int online = api_online();
+    char *answer = online ? ask_online(question) : NULL;
+
+    if (!answer && strcmp(g_config.ai_provider, "ollama") == 0) {
+        if (!online) j_dim("  API offline — asking Ollama directly\n\n");
+        answer = ask_ollama(question);
+    }
+
+    if (!answer) {
+        j_error("no AI available — check API or Ollama at %s\n", g_config.ai_url);
+        return EXIT_ERR;
+    }
+
+    print_wrapped(answer, 70);
+    j_print("\n");
+    free(answer);
+    return EXIT_OK;
 }

@@ -78,6 +78,7 @@ int cmd_help(int argc, char *argv[]) {
     j_print("    %-16s  %s\n", "status",  "Overview — live platform + tasks");
     j_print("    %-16s  %s\n", "health",  "Platform health — API, network, device");
     j_print("    %-16s  %s\n", "run",     "Run a Jarvis command via API");
+    j_print("    %-16s  %s\n", "ask",     "Ask AI a question (API → Ollama fallback)");
 
     j_bold("\n  Offline  ");
     j_dim("(reads state.json directly)\n");
@@ -89,8 +90,8 @@ int cmd_help(int argc, char *argv[]) {
     j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
     j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-3+\n");
-    j_dim("    ask  memory  projects  sync\n\n");
+    j_bold("\n  Coming in C-4+\n");
+    j_dim("    memory  projects  sync  daemon\n\n");
 
     return EXIT_OK;
 }

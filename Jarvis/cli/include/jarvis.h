@@ -26,6 +26,8 @@ typedef struct {
     char api_key[256];
     char name[64];
     char ai_provider[32];   /* ollama | claude | gpt */
+    char ai_model[64];      /* e.g. llama3.2, mistral, claude-3-haiku */
+    char ai_url[256];       /* Ollama base URL: http://127.0.0.1:11434 */
     char state_path[512];   /* path to state.json — absolute or relative to $HOME */
     int  json_output;
     int  no_color;
@@ -46,6 +48,7 @@ int cmd_who(void);
 int cmd_focus(void);
 int cmd_tasks(void);
 int cmd_status_offline(void);
+struct JsonNode *state_load(void);  /* load + parse state.json; caller json_frees */
 
 /* API bridge commands (api.c — requires libcurl) */
 void api_init(void);
@@ -53,6 +56,7 @@ int  api_online(void);
 int  cmd_status(void);
 int  cmd_health(void);
 int  cmd_run(int argc, char *argv[]);
+int  cmd_ask(int argc, char *argv[]);
 
 /* Output — box drawing uses BOX_WIDTH=68 visual chars */
 void j_print(const char *fmt, ...);

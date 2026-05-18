@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "status") == 0) return cmd_status();
     if (strcmp(cmd, "health") == 0) return cmd_health();
     if (strcmp(cmd, "run")    == 0) return cmd_run(argc - 1, argv + 1);
+    if (strcmp(cmd, "ask")    == 0) return cmd_ask(argc - 1, argv + 1);
 
     j_error("unknown command '%s'  --  try: jarvis help\n", cmd);
     return EXIT_UNKNOWN;
