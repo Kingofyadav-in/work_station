@@ -82,16 +82,25 @@ int cmd_help(int argc, char *argv[]) {
 
     j_bold("\n  Offline  ");
     j_dim("(reads state.json directly)\n");
-    j_print("    %-16s  %s\n", "who",     "Identity profile");
-    j_print("    %-16s  %s\n", "focus",   "Current focus and next actions");
-    j_print("    %-16s  %s\n", "tasks",   "Task list with status");
+    j_print("    %-16s  %s\n", "who",       "Identity profile");
+    j_print("    %-16s  %s\n", "focus",     "Current focus and next actions");
+    j_print("    %-16s  %s\n", "tasks",     "Task list with status");
+    j_print("    %-16s  %s\n", "memory",    "Recent memory entries");
+
+    j_print("    %-16s  %s\n", "add-task",  "Add a task to workflow");
+    j_print("    %-16s  %s\n", "done",      "Mark a task done");
+
+    j_bold("\n  Write  ");
+    j_dim("(API required)\n");
+    j_print("    %-16s  %s\n", "remember",  "Save a memory note");
+    j_print("    %-16s  %s\n", "set-focus", "Set current focus");
 
     j_bold("\n  Flags\n");
     j_print("    %-16s  %s\n", "--json",     "Output raw JSON (future phases)");
     j_print("    %-16s  %s\n", "--no-color", "Disable ANSI colors");
 
-    j_bold("\n  Coming in C-4+\n");
-    j_dim("    memory  projects  sync  daemon\n\n");
+    j_bold("\n  Coming in C-5+\n");
+    j_dim("    projects  sync  daemon\n\n");
 
     return EXIT_OK;
 }

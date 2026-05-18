@@ -1,7 +1,7 @@
 #ifndef JARVIS_H
 #define JARVIS_H
 
-#define JARVIS_VERSION  "0.1.0"
+#define JARVIS_VERSION  "0.4.0"
 #define JARVIS_NAME     "JARVIS"
 #define JARVIS_API_URL  "http://127.0.0.1:5050"
 #define JARVIS_CONFIG   ".jarvis/config"
@@ -47,7 +47,10 @@ int cmd_hello(void);
 int cmd_who(void);
 int cmd_focus(void);
 int cmd_tasks(void);
+int cmd_memory(void);
 int cmd_status_offline(void);
+int cmd_add_task(int argc, char *argv[]);
+int cmd_done(int argc, char *argv[]);
 struct JsonNode *state_load(void);  /* load + parse state.json; caller json_frees */
 
 /* API bridge commands (api.c — requires libcurl) */
@@ -57,6 +60,10 @@ int  cmd_status(void);
 int  cmd_health(void);
 int  cmd_run(int argc, char *argv[]);
 int  cmd_ask(int argc, char *argv[]);
+
+/* Write commands — require API (api.c) */
+int  cmd_remember(int argc, char *argv[]);
+int  cmd_set_focus(int argc, char *argv[]);
 
 /* Output — box drawing uses BOX_WIDTH=68 visual chars */
 void j_print(const char *fmt, ...);

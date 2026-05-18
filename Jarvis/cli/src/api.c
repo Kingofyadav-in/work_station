@@ -475,3 +475,57 @@ int cmd_ask(int argc, char *argv[]) {
     free(answer);
     return EXIT_OK;
 }
+
+/* ── C-4: write commands ────────────────────────────────────────────── */
+
+/* POST /api/command <cmd_str>, print result, return exit code.
+ * Callers must verify api_online() before calling. */
+static int api_write_cmd(const char *cmd_str, long timeout_ms) {
+    char url[512]; api_url(url, sizeof(url), "/api/command");
+    char esc[1024]; json_escape_str(cmd_str, esc, sizeof(esc));
+    char body[1200]; snprintf(body, sizeof(body), "{\"command\":\"%s\"}", esc);
+
+    long code = 0;
+    char *raw = http_post(url, body, timeout_ms, &code);
+    if (!raw || code != 200) { free(raw); j_error("API request failed\n"); return EXIT_ERR; }
+
+    JsonNode *root = json_parse(raw); free(raw);
+    if (!root) { j_error("failed to parse response\n"); return EXIT_ERR; }
+
+    int ok             = json_bool(root, "ok", 0);
+    const char *result = json_str(root, "result");
+    const char *error  = json_str(root, "error");
+
+    if (result && result[0]) j_success("  %s\n\n", result);
+    else if (error && error[0]) j_error("%s\n", error);
+
+    json_free(root);
+    return ok ? EXIT_OK : EXIT_ERR;
+}
+
+static void join_args(char *buf, size_t sz, int argc, char *argv[], int start) {
+    buf[0] = '\0';
+    for (int i = start; i < argc; i++) {
+        if (i > start) strncat(buf, " ", sz - strlen(buf) - 1);
+        strncat(buf, argv[i], sz - strlen(buf) - 1);
+    }
+}
+
+int cmd_remember(int argc, char *argv[]) {
+    if (argc < 2) { j_error("usage: jarvis remember <note text>\n"); return EXIT_ERR; }
+    if (!api_online()) { j_error("API not reachable at %s\n", g_config.api_url); return EXIT_ERR; }
+    char note[1024]; join_args(note, sizeof(note), argc, argv, 1);
+    char cmd[1200]; snprintf(cmd, sizeof(cmd), "add memory %s", note);
+    j_print("\n"); j_dim("  saving: %s\n\n", note);
+    return api_write_cmd(cmd, 12000L);
+}
+
+int cmd_set_focus(int argc, char *argv[]) {
+    if (argc < 2) { j_error("usage: jarvis set-focus <focus text>\n"); return EXIT_ERR; }
+    if (!api_online()) { j_error("API not reachable at %s\n", g_config.api_url); return EXIT_ERR; }
+    char focus[512]; join_args(focus, sizeof(focus), argc, argv, 1);
+    char cmd[600]; snprintf(cmd, sizeof(cmd), "set current focus %s", focus);
+    j_print("\n"); j_dim("  setting focus: %s\n\n", focus);
+    return api_write_cmd(cmd, 12000L);
+}
+

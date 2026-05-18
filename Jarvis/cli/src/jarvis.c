@@ -47,12 +47,19 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "who")    == 0) return cmd_who();
     if (strcmp(cmd, "focus")  == 0) return cmd_focus();
     if (strcmp(cmd, "tasks")  == 0) return cmd_tasks();
+    if (strcmp(cmd, "memory") == 0) return cmd_memory();
 
     /* Online/offline auto commands */
-    if (strcmp(cmd, "status") == 0) return cmd_status();
-    if (strcmp(cmd, "health") == 0) return cmd_health();
-    if (strcmp(cmd, "run")    == 0) return cmd_run(argc - 1, argv + 1);
-    if (strcmp(cmd, "ask")    == 0) return cmd_ask(argc - 1, argv + 1);
+    if (strcmp(cmd, "status")    == 0) return cmd_status();
+    if (strcmp(cmd, "health")    == 0) return cmd_health();
+    if (strcmp(cmd, "run")       == 0) return cmd_run(argc - 1, argv + 1);
+    if (strcmp(cmd, "ask")       == 0) return cmd_ask(argc - 1, argv + 1);
+
+    /* Write commands — require API */
+    if (strcmp(cmd, "remember")  == 0) return cmd_remember(argc - 1, argv + 1);
+    if (strcmp(cmd, "set-focus") == 0) return cmd_set_focus(argc - 1, argv + 1);
+    if (strcmp(cmd, "add-task")  == 0) return cmd_add_task(argc - 1, argv + 1);
+    if (strcmp(cmd, "done")      == 0) return cmd_done(argc - 1, argv + 1);
 
     j_error("unknown command '%s'  --  try: jarvis help\n", cmd);
     return EXIT_UNKNOWN;
