@@ -1,0 +1,44 @@
+
+:root {
+    --bg:           #000000;
+    --bg-grad:      #000000;
+    --panel:        #1c1c1e;
+    --panel-strong: #202024;
+    --panel-hover:  #252529;
+    --line:         rgba(255,255,255,0.10);
+    --line-strong:  rgba(255,255,255,0.12);
+    --text:         #e5e5e5;
+    --text-inv:     #000000;
+    --muted:        #999999;
+    --muted2:       #777777;
+    --gold:         #046A38;
+    --gold-light:   #FF671F;
+    --teal:         #046A38;
+    --teal-light:   #FF671F;
+    --red:          #ff6b6b;
+    --green:        #2ecc71;
+    --green-light:  #4ad88a;
+    --hero-bg:      rgba(28,28,30,0.72);
+    --btn-bg:       #1c1c1e;
+    --btn-bg-hover: #252529;
+    --btn-text:     #e5e5e5;
+    --input-bg:     #141416;
+    --sidebar-link: #e5e5e5;
+    --card-shadow:  0 10px 30px rgba(0,0,0,0.45);
+    --hero-shadow:  0 10px 30px rgba(0,0,0,0.45);
+    --accent1:      rgba(4,106,56,0.20);
+    --accent2:      rgba(255,103,31,0.18);
+    --pulse-color:  #2ecc71;
+    --confirm-bg:   rgba(4,106,56,0.16);
+    --confirm-border: rgba(4,106,56,0.38);
+    --warn-bg:      rgba(255,103,31,0.14);
+    --warn-border:  rgba(255,103,31,0.36);
+    --danger-bg:    rgba(255,107,107,0.12);
+    --danger-border: rgba(255,107,107,0.34);
+    --divider:      rgba(255,255,255,0.08);
+    --header-bg:    rgba(0,0,0,0.65);
+    --header-text:  #e5e5e5;
+    --sidebar-bg:   #000000;
+    --sidebar-nav:  #0d0d0f;
+    --sidebar-border: rgba(255,255,255,0.08);
+}

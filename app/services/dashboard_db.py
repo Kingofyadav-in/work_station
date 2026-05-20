@@ -19,6 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator
 
+from services.logger import get_logger
+
+logger = get_logger(__name__)
+
 _ROOT = Path(__file__).resolve().parents[2]
 _DB_PATH = _ROOT / "logs" / "dashboard.db"
 _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -80,8 +84,8 @@ def _init() -> None:
     try:
         with _conn() as con:
             con.executescript(_SCHEMA)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("DB init failed: %s", e)
 
 
 _init()
@@ -105,8 +109,8 @@ def log_action(
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (ts, action_type, command, result[:500], int(ok), source),
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_action failed (%s): %s", action_type, e)
 
 
 def get_recent_actions(limit: int = 50) -> list[dict[str, Any]]:
@@ -118,7 +122,8 @@ def get_recent_actions(limit: int = 50) -> list[dict[str, Any]]:
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
-    except Exception:
+    except Exception as e:
+        logger.warning("get_recent_actions failed: %s", e)
         return []
 
 
@@ -149,8 +154,8 @@ def save_automation_snapshot(
                 "DELETE FROM automation_snapshots WHERE id NOT IN "
                 "(SELECT id FROM automation_snapshots ORDER BY ts DESC LIMIT 500)"
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("save_automation_snapshot failed: %s", e)
 
 
 def get_recent_snapshots(limit: int = 20) -> list[dict[str, Any]]:
@@ -163,7 +168,8 @@ def get_recent_snapshots(limit: int = 20) -> list[dict[str, Any]]:
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
-    except Exception:
+    except Exception as e:
+        logger.warning("get_recent_snapshots failed: %s", e)
         return []
 
 
@@ -211,8 +217,8 @@ def save_dashboard_state_snapshot(state: dict[str, Any]) -> None:
                 "DELETE FROM dashboard_state_snapshots WHERE id NOT IN "
                 "(SELECT id FROM dashboard_state_snapshots ORDER BY ts DESC LIMIT 500)"
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("save_dashboard_state_snapshot failed: %s", e)
 
 
 def get_latest_dashboard_state_snapshot() -> dict[str, Any]:
@@ -230,5 +236,6 @@ def get_latest_dashboard_state_snapshot() -> dict[str, Any]:
         except Exception:
             data["public"] = {}
         return data
-    except Exception:
+    except Exception as e:
+        logger.warning("get_latest_dashboard_state_snapshot failed: %s", e)
         return {}

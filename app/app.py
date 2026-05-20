@@ -5,25 +5,51 @@ import hmac
 import html
 import json
 import os
+import platform
 import secrets
+import socket
 import time
 from pathlib import Path
 
 import streamlit as st
 
-# ── Auth gate ─────────────────────────────────────────────────────────────────
-# Session token persists in logs/dashboard_session.json so browser refresh
-# does not force re-login. Token expires after SESSION_TTL_HOURS.
+try:
+    import bcrypt as _bcrypt
+    _BCRYPT_AVAILABLE = True
+except ImportError:
+    _bcrypt = None  # type: ignore[assignment]
+    _BCRYPT_AVAILABLE = False
 
+# ── Auth gate ─────────────────────────────────────────────────────────────────
 _ROOT_DIR_AUTH = Path(__file__).resolve().parent.parent
 _SESSION_FILE  = _ROOT_DIR_AUTH / "logs" / "dashboard_session.json"
 _SESSION_TTL_HOURS = 24
+
+# DASHBOARD_SESSION_SECRET signs session tokens so file-copy attacks are blocked.
+# Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+_SESSION_SECRET = os.getenv("DASHBOARD_SESSION_SECRET", "").strip()
+
+
+def _device_fingerprint() -> str:
+    """Stable per-machine identifier bound to session tokens."""
+    raw = f"{socket.gethostname()}|{platform.node()}|{platform.machine()}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+
+def _sign_token(token: str) -> str:
+    secret = (_SESSION_SECRET or "insecure-fallback").encode()
+    return hmac.new(secret, (token + _device_fingerprint()).encode(), hashlib.sha256).hexdigest()
 
 
 def _save_session(token: str) -> None:
     _SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     _SESSION_FILE.write_text(
-        json.dumps({"token": token, "created_at": time.time()}),
+        json.dumps({
+            "token": token,
+            "sig": _sign_token(token),
+            "device": _device_fingerprint(),
+            "created_at": time.time(),
+        }),
         encoding="utf-8",
     )
 
@@ -32,11 +58,33 @@ def _load_session() -> str:
     try:
         data = json.loads(_SESSION_FILE.read_text(encoding="utf-8"))
         age_hours = (time.time() - float(data["created_at"])) / 3600
-        if age_hours < _SESSION_TTL_HOURS:
-            return data["token"]
+        if age_hours >= _SESSION_TTL_HOURS:
+            return ""
+        # Verify device fingerprint matches current machine
+        if data.get("device") != _device_fingerprint():
+            return ""
+        # Verify HMAC signature — prevents forged session files
+        token = data.get("token", "")
+        if not hmac.compare_digest(data.get("sig", ""), _sign_token(token)):
+            return ""
+        return token
     except Exception:
         pass
     return ""
+
+
+def _verify_password(entered: str, stored: str) -> bool:
+    """Constant-time password check. Supports bcrypt hashes ($2b$…) and plaintext."""
+    if _BCRYPT_AVAILABLE and stored.startswith(("$2b$", "$2a$", "$2y$")):
+        try:
+            return _bcrypt.checkpw(entered.encode(), stored.encode())
+        except Exception:
+            return False
+    # Plaintext fallback — timing-safe via double-hash comparison
+    return hmac.compare_digest(
+        hashlib.sha256(entered.encode()).hexdigest(),
+        hashlib.sha256(stored.encode()).hexdigest(),
+    )
 
 
 def _check_password() -> bool:
@@ -48,14 +96,6 @@ def _check_password() -> bool:
             st.stop()
         return True
 
-    def _verify(entered: str) -> bool:
-        return hmac.compare_digest(
-            hashlib.sha256(entered.encode()).hexdigest(),
-            hashlib.sha256(_pw_env.encode()).hexdigest(),
-        )
-
-    # Restore auth from session file — file presence + TTL is the credential
-    # (the file lives on your local filesystem behind the same OS permissions as everything else)
     if not st.session_state.get("_auth_ok") and _load_session():
         st.session_state["_auth_ok"] = True
 
@@ -64,12 +104,16 @@ def _check_password() -> bool:
 
     st.set_page_config(page_title="Jarvis — Login", page_icon="J", layout="centered")
     st.markdown("## Jarvis Control Panel")
+    if not _BCRYPT_AVAILABLE:
+        st.caption("Tip: install `bcrypt` and set DASHBOARD_PASSWORD to a `$2b$` hash for stronger security.")
+    elif not _pw_env.startswith(("$2b$", "$2a$", "$2y$")):
+        st.caption("Tip: set DASHBOARD_PASSWORD to a bcrypt hash — run `python3 -c \"import bcrypt; print(bcrypt.hashpw(b'yourpass', bcrypt.gensalt()).decode())\"` to generate one.")
     st.markdown("Enter your dashboard password to continue.")
     entered = st.text_input("Password", type="password", key="_login_input")
     if st.button("Login", type="primary"):
-        if _verify(entered):
+        if _verify_password(entered, _pw_env):
             st.session_state["_auth_ok"] = True
-            _save_session(secrets.token_hex(32))   # random token — not derived from password
+            _save_session(secrets.token_hex(32))
             st.rerun()
         else:
             st.error("Incorrect password.")
@@ -295,12 +339,22 @@ with left:
             else:
                 speak_result(r)
 
+    _CMD_MAX_LEN = 500
+    _CMD_BLOCKED = frozenset(["__import__", "exec(", "eval(", "os.system", "subprocess."])
+
     def _run(cmd: str) -> None:
         if not cmd.strip():
             return
-        r = run_command(cmd.strip())
+        cmd = cmd.strip()
+        if len(cmd) > _CMD_MAX_LEN:
+            st.error(f"Command too long ({len(cmd)} chars, max {_CMD_MAX_LEN}).")
+            return
+        if any(b in cmd.lower() for b in _CMD_BLOCKED):
+            st.error("Command contains blocked pattern.")
+            return
+        r = run_command(cmd)
         st.session_state["home_result"] = r
-        st.session_state["home_last_cmd"] = cmd.strip()
+        st.session_state["home_last_cmd"] = cmd
         st.session_state["home_last_preview"] = r.get("preview", {})
         push_history(r)
         _tts(r)

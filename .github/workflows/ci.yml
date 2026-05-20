@@ -7,8 +7,52 @@ on:
     branches: ["main"]
 
 jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff + black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install linters
+        run: pip install ruff black
+
+      - name: ruff check
+        run: ruff check app/ --select=E,F,W,I,UP --ignore=E501
+
+      - name: black --check
+        run: black --check app/
+
+  # ── Type checking ─────────────────────────────────────────────────────────────
+  typecheck:
+    name: Pyright type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies + pyright
+        run: |
+          pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install pyright
+
+      - name: pyright
+        run: pyright app/services/
+        continue-on-error: true  # non-blocking until annotations are complete
+
+  # ── Tests ─────────────────────────────────────────────────────────────────────
   test:
-    name: Pytest
+    name: Pytest + coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -21,19 +65,20 @@ jobs:
           cache: "pip"
 
       - name: Install system dependencies
-        run: sudo apt-get install -y portaudio19-dev
+        run: sudo apt-get install -y --no-install-recommends portaudio19-dev ffmpeg espeak-ng
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.lock.txt
+          pip install pytest pytest-cov
 
       - name: Run tests
-        run: pytest --tb=short --cov=. --cov-report=term-missing -q
+        run: pytest app/tests/ --tb=short --cov=app --cov-report=term-missing --cov-report=xml -q
         env:
           APP_ENV: test
-          DATABASE_URL: ""
           DASHBOARD_PASSWORD: ci-dashboard-password
+          DASHBOARD_SESSION_SECRET: ci-session-secret-32-chars-minimum
           JARVIS_API_KEY: ci-test-key-placeholder
           JARVIS_BRIDGE_SECRET: ci-bridge-secret
           JARVIS_SYNC_SECRET: ci-sync-secret
@@ -43,18 +88,33 @@ jobs:
           JARVIS_PUBLIC_CHAT: "0"
           JARVIS_PUBLIC_CHAT_FALLBACK: "1"
           JARVIS_BUS_BACKEND: filesystem
-          JARVIS_SYNC_SHARE_LEVEL: public
-          JARVIS_SYNC_INTERVAL: "300"
-          JARVIS_SYNC_TIMEOUT: "10"
-          JARVIS_VOICE_BACKEND: google
-          JARVIS_VOICE_LANG: en-IN
-          OLLAMA_HOST: http://localhost:11434
           AUTOMATION_DRY_RUN: "1"
 
-      - name: Upload coverage
+      - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: .coverage
-          retention-days: 7
+          path: coverage.xml
+          retention-days: 14
+
+  # ── Docker smoke test ─────────────────────────────────────────────────────────
+  docker:
+    name: Docker build smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t jarvis-dashboard:ci .
+
+      - name: Check image starts (5s smoke test)
+        run: |
+          docker run -d --name smoke \
+            -e APP_ENV=production \
+            -e DASHBOARD_PASSWORD='$2b$12$ci_test_hash_placeholder' \
+            -e DASHBOARD_SESSION_SECRET=ci-session-secret \
+            jarvis-dashboard:ci sleep 5
+          sleep 3
+          docker inspect smoke --format='{{.State.Status}}' | grep -q running
+          docker rm -f smoke

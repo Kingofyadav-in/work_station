@@ -9,9 +9,9 @@ address = "127.0.0.1"
 enableXsrfProtection = true
 
 [theme]
-base = "light"
-primaryColor = "#9e5f1a"
-backgroundColor = "#f0ebe2"
-secondaryBackgroundColor = "#ece4d4"
-textColor = "#1e1309"
+base = "dark"
+primaryColor = "#046A38"
+backgroundColor = "#0d1117"
+secondaryBackgroundColor = "#0a2e1a"
+textColor = "#e6edf3"
 font = "sans serif"

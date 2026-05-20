@@ -1,0 +1,151 @@
+
+/* ═══════════════════════════════════════════════════
+   DARK MODE: eliminate light-theme bleed
+   (Streamlit's base="light" in config.toml leaks
+   into some internal elements — these rules win)
+═══════════════════════════════════════════════════ */
+
+/* Force app and all top-level wrappers dark */
+.stApp,
+.stApp > section,
+.stApp > div:not([data-testid="stSidebar"]) {
+    background: var(--bg) !important;
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+}
+.stApp {
+    background: var(--bg-grad) !important;
+}
+
+/* All transparent containers must NOT inherit a white background */
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+div[data-testid="stVerticalBlock"],
+div[data-testid="stHorizontalBlock"],
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* BaseUI popover/dropdown */
+[data-baseweb="popover"] > div,
+[data-baseweb="popover-content"],
+[data-baseweb="menu"],
+[data-baseweb="list"],
+ul[role="listbox"],
+li[role="option"] {
+    background-color: var(--panel-strong) !important;
+    color: var(--text) !important;
+    border-color: var(--line-strong) !important;
+}
+li[role="option"]:hover {
+    background-color: var(--panel-hover) !important;
+}
+
+/* BaseUI tooltip */
+[data-baseweb="tooltip"],
+[data-baseweb="tooltip"] div {
+    background-color: var(--panel-strong) !important;
+    color: var(--text) !important;
+}
+
+/* BaseUI notification (info/warning/error boxes from Streamlit) */
+[data-baseweb="notification"] {
+    background-color: var(--panel) !important;
+    border-color: var(--line-strong) !important;
+}
+[data-baseweb="notification"] p,
+[data-baseweb="notification"] div {
+    color: var(--text) !important;
+}
+
+/* Alert boxes */
+div[data-testid="stAlert"] {
+    background-color: var(--panel) !important;
+}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span {
+    color: var(--text) !important;
+}
+
+/* Spinner */
+[data-testid="stSpinner"] > div {
+    background: transparent !important;
+    color: var(--gold-light) !important;
+}
+
+/* Code block */
+div[data-testid="stCodeBlock"] {
+    background-color: var(--input-bg) !important;
+    border-color: var(--line-strong) !important;
+}
+div[data-testid="stCodeBlock"] > div,
+div[data-testid="stCodeBlock"] pre,
+div[data-testid="stCodeBlock"] code,
+div[data-testid="stCodeBlock"] span {
+    background-color: var(--input-bg) !important;
+    color: var(--text) !important;
+    -webkit-text-fill-color: var(--text) !important;
+}
+
+/* JSON viewer */
+div[data-testid="stJson"] {
+    background-color: var(--input-bg) !important;
+}
+
+/* Links */
+[data-testid="stMarkdownContainer"] a {
+    color: var(--gold-light) !important;
+}
+[data-testid="stMarkdownContainer"] a:hover {
+    color: var(--gold) !important;
+}
+
+/* Metric delta */
+[data-testid="stMetricDelta"] > div,
+[data-testid="stMetricDelta"] span {
+    color: var(--green) !important;
+}
+
+/* Number input step buttons */
+div[data-testid="stNumberInput"] button {
+    background: var(--panel-strong) !important;
+    border-color: var(--line-strong) !important;
+    color: var(--text) !important;
+}
+
+/* Horizontal rule */
+hr {
+    border-color: var(--divider) !important;
+}
+
+/* Tabs in dark */
+div[data-testid="stTabs"] [role="tablist"] {
+    border-color: var(--divider) !important;
+}
+
+/* Sidebar brand card in dark */
+.jarvis-sidebar-brand {
+    border-color: var(--line-strong) !important;
+}
+.jarvis-sidebar-brand::before {
+    opacity: 0.30 !important;
+}
+
+/* Sidebar box-shadow softened in dark */
+section[data-testid="stSidebar"] {
+    box-shadow: 4px 0 32px rgba(0,0,0,0.28) !important;
+}
+
+/* Expander in dark */
+details[data-testid="stExpander"] summary:hover,
+div[data-testid="stExpander"] summary:hover {
+    background: var(--panel-hover) !important;
+}
+
+/* DataFrame / table in dark */
+div[data-testid="stDataFrame"] td {
+    color: var(--text) !important;
+    border-color: var(--divider) !important;
+}

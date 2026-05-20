@@ -19,10 +19,26 @@ logs/dashboard_history.jsonl
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .venv/
+app/.venv/
 *.egg-info/
 dist/
 build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# SQLite runtime databases
+logs/*.db
+logs/*.db-shm
+logs/*.db-wal
+
+# Session files (contain auth tokens — never commit)
+logs/dashboard_session.json
 
 # Editor
 .vscode/

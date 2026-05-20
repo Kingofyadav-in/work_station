@@ -14,6 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from services.logger import get_logger
+
+logger = get_logger(__name__)
+
 _ROOT = Path(__file__).resolve().parents[2]
 _AUT  = _ROOT / "automation"
 
@@ -29,7 +33,10 @@ _LOG_FILE     = _ROOT / "logs" / "automation.log"
 def _read_json(path: Path, default: Any = None) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except FileNotFoundError:
+        return default if default is not None else {}
+    except Exception as e:
+        logger.warning("_read_json failed %s: %s", path.name, e)
         return default if default is not None else {}
 
 
@@ -40,7 +47,8 @@ def _pid_alive(pid_path: Path) -> int | None:
         return pid
     except PermissionError:
         return int(pid_path.read_text(encoding="utf-8").strip())
-    except Exception:
+    except Exception as e:
+        logger.warning("_pid_alive check failed: %s", e)
         return None
 
 
@@ -49,8 +57,9 @@ def _tail_jsonl(path: Path, n: int) -> list[dict[str, Any]]:
         return []
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        return [json.loads(l) for l in lines[-n:] if l.strip()]
-    except Exception:
+        return [json.loads(line) for line in lines[-n:] if line.strip()]
+    except Exception as e:
+        logger.warning("_tail_jsonl failed %s: %s", path.name, e)
         return []
 
 
@@ -105,5 +114,6 @@ def get_automation_log_tail(n: int = 30) -> list[str]:
     try:
         lines = _LOG_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
         return lines[-n:]
-    except Exception:
+    except Exception as e:
+        logger.warning("get_automation_log_tail failed: %s", e)
         return []

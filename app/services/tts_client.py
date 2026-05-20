@@ -9,6 +9,10 @@ import tempfile
 import threading
 from typing import Any
 
+from services.logger import get_logger
+
+logger = get_logger(__name__)
+
 # ── Active TTS process tracking (for stop_speaking) ───────────────────────────
 _tts_lock = threading.Lock()
 _tts_proc: subprocess.Popen | None = None
@@ -28,8 +32,8 @@ def stop_speaking() -> None:
     if proc is not None:
         try:
             proc.terminate()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("stop_speaking terminate failed: %s", e)
 
 # ── Backends ──────────────────────────────────────────────────────────────────
 _ESPEAK = shutil.which("espeak-ng")
@@ -105,7 +109,8 @@ def _load_tts_profile() -> dict[str, Any]:
             "offline_voice": ai.get("tts_offline_voice", DEFAULT_OFFLINE_VOICE),
             "speed":        float(ai.get("tts_speed", DEFAULT_SPEED)),
         }
-    except Exception:
+    except Exception as e:
+        logger.warning("_load_tts_profile failed: %s", e)
         return {
             "connectivity": "online",
             "voice": DEFAULT_ONLINE_VOICE,
@@ -188,7 +193,8 @@ def _speak_edge(text: str, voice: str, speed: float, wait: bool = False) -> None
             loop.run_until_complete(_edge_speak_async(text, voice, speed, wait))
         finally:
             loop.close()
-    except Exception:
+    except Exception as e:
+        logger.warning("edge-tts failed, falling back to espeak: %s", e)
         _speak_espeak(text, speed=speed, wait=wait)
 
 

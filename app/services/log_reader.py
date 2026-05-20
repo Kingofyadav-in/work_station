@@ -5,6 +5,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from services.logger import get_logger
+
+logger = get_logger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BUS_LOG_PATH = ROOT_DIR / "logs" / "bus.log"
@@ -15,7 +18,10 @@ PROCESSED_DIR = ROOT_DIR / "shared" / "bus" / "processed"
 def _tail_lines(path: Path, lines: int = 20) -> list[str]:
     try:
         content = path.read_text(encoding="utf-8").splitlines()
-    except Exception:
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        logger.warning("_tail_lines failed %s: %s", path.name, e)
         return []
     return content[-lines:]
 
@@ -46,7 +52,8 @@ def read_bus_log_filtered(lines: int = 20, keyword: str = "") -> list[str]:
 def read_event_lines(lines: int = 20) -> list[str]:
     try:
         files = sorted(EVENTS_DIR.glob("*.jsonl"))
-    except Exception:
+    except Exception as e:
+        logger.warning("read_event_lines glob failed: %s", e)
         return []
     if not files:
         return []
@@ -89,7 +96,8 @@ def get_last_bus_log_time() -> str:
 
 def read_processed_ids(limit: int = 10) -> list[str]:
     try:
-        files = sorted(PROCESSED_DIR.glob("*"), key=lambda path: path.stat().st_mtime, reverse=True)
-    except Exception:
+        files = sorted(PROCESSED_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+    except Exception as e:
+        logger.warning("read_processed_ids failed: %s", e)
         return []
     return [path.name for path in files[:limit]]

@@ -1,7 +1,43 @@
-.git
-.venv
-app/.venv
-**/__pycache__
-**/.pytest_cache
+# Git and CI
+.git/
+.github/
+.gitignore
+
+# Python virtualenvs
+.venv/
+app/.venv/
+**/.venv/
+
+# Compiled Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Secrets — inject via environment at runtime, never bake into image
+.env
+.env.local
+
+# Runtime session files
+logs/dashboard_session.json
+logs/*.db
+logs/*.db-shm
+logs/*.db-wal
 logs/*.log
 logs/*.pid
+
+# OS
+.DS_Store
+Thumbs.db

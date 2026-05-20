@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
 
+from services.logger import get_logger
+
+logger = get_logger(__name__)
+_cache_lock = threading.Lock()
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 JARVIS_DIR = ROOT_DIR / "Jarvis"
@@ -39,17 +45,27 @@ KING_PID_PATH = ROOT_DIR / "logs" / "kingofyadav.pid"
 def _read_json(path: Path, default: dict[str, Any] | None = None) -> dict[str, Any]:
     default = default or {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+        with open(path, encoding="utf-8") as fh:
+            fcntl.flock(fh, fcntl.LOCK_SH)
+            try:
+                return json.loads(fh.read())
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+    except FileNotFoundError:
+        return default
+    except Exception as e:
+        logger.warning("state read failed %s: %s", path.name, e)
         return default
 
 
 def get_hi_state() -> dict[str, Any]:
-    return _read_json(STATE_PATH, default={})
+    with _cache_lock:
+        return _read_json(STATE_PATH, default={})
 
 
 def get_profiles() -> dict[str, Any]:
-    return _read_json(PROFILES_PATH, default={})
+    with _cache_lock:
+        return _read_json(PROFILES_PATH, default={})
 
 
 def get_listener_status() -> dict[str, Any]:
@@ -69,7 +85,8 @@ def get_dashboard_state() -> dict[str, Any]:
     listener = get_listener_status()
     try:
         device = verify_current_device()
-    except Exception:
+    except Exception as e:
+        logger.warning("device verification failed: %s", e)
         device = {}
 
     memory = state.get("memory", [])
@@ -114,12 +131,13 @@ def get_dashboard_state() -> dict[str, Any]:
     return _result
 
 
-def get_automation_snapshot() -> dict:
+def get_automation_snapshot() -> dict[str, Any]:
     """Thin wrapper used by the main dashboard to include automation state."""
     try:
         sys.path.insert(0, str(ROOT_DIR / "app"))
         from services.automation_client import get_automation_status
         return get_automation_status()
-    except Exception:
+    except Exception as e:
+        logger.warning("automation snapshot failed: %s", e)
         return {"daemon_alive": False, "stop_active": False, "dry_run": False,
                 "rule_count": 0, "enabled_count": 0, "pending_count": 0}
