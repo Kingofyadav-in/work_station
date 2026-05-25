@@ -6,6 +6,7 @@ from datetime import datetime
 import streamlit as st
 
 from services.local_admin_registry import clear_local_admin_registry, get_local_admin_registry_state
+from services.state_reader import get_dashboard_state
 from services.ui_helpers import (
     inject_theme,
     maybe_auto_refresh,
@@ -26,6 +27,9 @@ render_theme_toggle()
 inject_theme()
 
 admin_state = get_local_admin_registry_state(limit=500)
+_profile  = get_dashboard_state().get("profile", {})
+_channels = _profile.get("public_channels", {})
+_ventures = _profile.get("ventures", [])
 items  = admin_state.get("items", [])
 events = admin_state.get("events", [])
 
@@ -112,11 +116,13 @@ with tab_admins:
 with tab_personal:
     pc0, pc1, pc2, pc3 = st.columns(4)
     with pc0:
-        render_stat_card("Full Name", "Amit Kumar Yadav", "Primary identity", tone="ok")
+        render_stat_card("Full Name", _profile.get("full_name", "Amit Kumar Yadav"), "Primary identity", tone="ok")
     with pc1:
-        render_stat_card("Location", "Bhagalpur, Bihar", "India · Base of operations")
+        render_stat_card("Location", _profile.get("location", "Bhagalpur, Bihar"), "India · Base of operations")
     with pc2:
-        render_stat_card("Active Ventures", "3+", "Royal Heritage Resort · Jhon Aamit LLP · NGO", tone="ok")
+        _v_count = str(len(_ventures)) + "+" if _ventures else "3+"
+        _v_detail = " · ".join(_ventures[:3]) if _ventures else "Royal Heritage Resort · Jhon Aamit LLP · NGO"
+        render_stat_card("Active Ventures", _v_count, _v_detail, tone="ok")
     with pc3:
         render_stat_card("Projects Led", "10+", "5+ years of work · 1 national NGO")
 
@@ -124,16 +130,16 @@ with tab_personal:
     with pl:
         section_label("Contact & Identity")
         render_kv_grid([
-            ("Full Name",    "Amit Kumar Yadav"),
-            ("Handle",       "kingofyadav"),
+            ("Full Name",    _profile.get("full_name",  "Amit Kumar Yadav")),
+            ("Handle",       _profile.get("username",   "kingofyadav")),
             ("Born",         "25 December 1999"),
-            ("Origin",       "Bhagalpur, Bihar, India"),
-            ("Phone",        "+91 95235 28114"),
-            ("Website",      "kingofyadav.in"),
-            ("Brand",        "kingofyadav.in"),
-            ("Company",      "Jhon Aamit LLP"),
+            ("Origin",       _profile.get("location",   "Bhagalpur, Bihar, India")),
+            ("Phone",        _profile.get("phone",      "+91 95235 28114")),
+            ("Website",      _profile.get("website",    "kingofyadav.in")),
+            ("Brand",        _profile.get("brand",      "kingofyadav.in")),
+            ("Company",      _profile.get("company",    "Jhon Aamit LLP")),
             ("Language",     "English · Hindi"),
-            ("Domain",       "Digital Systems & Social Impact"),
+            ("Domain",       _profile.get("domain",     "Digital Systems & Social Impact")),
         ])
 
         section_label("Professional Work")
@@ -179,15 +185,19 @@ with tab_personal:
 
     with pr:
         section_label("Social Presence")
+        _fb = _channels.get("facebook", "https://www.facebook.com/kingofyadav.in")
+        _ig = _channels.get("instagram", "https://www.instagram.com/kingofyadav.in")
+        _gh = _channels.get("github",   "https://github.com/kingofyadav")
+        _ws = _channels.get("website",  "https://kingofyadav.in")
         st.markdown(
-            """
+            f"""
 <div style="display:grid;gap:0.75rem;">
-<a href="https://www.facebook.com/kingofyadav.in" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
+<a href="{_fb}" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
   <span style="font-size:1.3rem;">f</span>
   <div><div style="font-weight:700;font-size:0.92rem;">Facebook</div>
   <div style="color:var(--muted);font-size:0.78rem;">@kingofyadav.in · Public updates &amp; community</div></div>
 </a>
-<a href="https://www.instagram.com/kingofyadav.in" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
+<a href="{_ig}" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
   <span style="font-size:1.3rem;">&#9432;</span>
   <div><div style="font-weight:700;font-size:0.92rem;">Instagram</div>
   <div style="color:var(--muted);font-size:0.78rem;">@kingofyadav.in · Visual updates &amp; field activity</div></div>
@@ -197,12 +207,12 @@ with tab_personal:
   <div><div style="font-weight:700;font-size:0.92rem;">YouTube</div>
   <div style="color:var(--muted);font-size:0.78rem;">@kingofyadav-youtube · Videos &amp; public messages</div></div>
 </a>
-<a href="https://github.com/kingofyadav" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
+<a href="{_gh}" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
   <span style="font-size:1.3rem;">&lt;/&gt;</span>
   <div><div style="font-weight:700;font-size:0.92rem;">GitHub</div>
   <div style="color:var(--muted);font-size:0.78rem;">@kingofyadav · Code &amp; open projects</div></div>
 </a>
-<a href="https://kingofyadav.in" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
+<a href="{_ws}" target="_blank" style="display:flex;align-items:center;gap:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:0.9rem 1.1rem;text-decoration:none;color:var(--text);">
   <span style="font-size:1.3rem;">&#127760;</span>
   <div><div style="font-weight:700;font-size:0.92rem;">kingofyadav.in</div>
   <div style="color:var(--muted);font-size:0.78rem;">Official website · Identity &amp; portfolio</div></div>

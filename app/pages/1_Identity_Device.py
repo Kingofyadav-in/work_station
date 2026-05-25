@@ -147,11 +147,17 @@ with tab_device:
         render_stat_card("Label", device.get("label") or "none",
                          (device.get("registered_at") or "never")[:10])
 
+    _DEV_KEY_MAP = {"hardware": "hw", "software": "sw", "network": "net", "env": "env"}
+
     def _run_dev(cmd: str) -> None:
         if not cmd.strip():
             return
         r = run_command(cmd.strip())
         st.session_state["device_result"] = r
+        for kw, key in _DEV_KEY_MAP.items():
+            if kw in cmd.lower():
+                st.session_state[f"device_{key}_result"] = r
+                break
         push_history(r)
 
     section_label("Commands")
@@ -199,12 +205,17 @@ with tab_device:
     if show_raw:
         render_json_block(device)
 
-    with st.expander("Hardware", expanded=False):
-        st.caption("Run **Hardware** button above to load current hardware details.")
-    with st.expander("Software", expanded=False):
-        st.caption("Run **Software** button above to load current software details.")
-    with st.expander("Network", expanded=False):
-        st.caption("Run **Network** button above to load current network details.")
-    with st.expander("Environment", expanded=False):
-        st.caption("Run **Environment** button above to load safe environment details.")
-        st.caption("Secret values (API keys, tokens) are never stored or displayed.")
+    for _exp_label, _exp_key, _exp_hint in [
+        ("Hardware",    "hw",  "hardware report"),
+        ("Software",    "sw",  "software report"),
+        ("Network",     "net", "network report"),
+        ("Environment", "env", "env report"),
+    ]:
+        _cached = st.session_state.get(f"device_{_exp_key}_result")
+        with st.expander(_exp_label, expanded=bool(_cached)):
+            if _cached:
+                render_result_with_confirmation(_cached, _run_dev, key_prefix=f"dev_{_exp_key}")
+            else:
+                st.caption(f"Run **{_exp_label}** above to load {_exp_label.lower()} details.")
+                if _exp_key == "env":
+                    st.caption("Secret values (API keys, tokens) are never stored or displayed.")

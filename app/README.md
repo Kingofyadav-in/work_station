@@ -52,16 +52,15 @@ streamlit run app.py --server.address 127.0.0.1 --server.port 8501
 | Page | File | Purpose |
 |---|---|---|
 | Home | `app.py` | Command console, state summary, alerts, quick status |
-| Identity | `pages/1_Identity.py` | Profile, relationship, intro, identity commands |
-| Device | `pages/2_Device.py` | Trusted-device registration and inventory tabs |
-| System | `pages/3_System.py` | Host status, logs, doctor health, system commands |
-| Work | `pages/4_Work.py` | Current focus, workflow tasks, task actions |
-| Memory | `pages/5_Memory.py` | Search, filters, memory cards, public/private visibility |
-| Security | `pages/6_Security.py` | Confirmation status, response mode, sensitive state controls |
-| Conversation | `pages/7_Conversation.py` | AI conversation with provider/model selection |
-| Public Jarvis | `pages/8_Public_Jarvis.py` | Website chat config, test chat, knowledge, recent questions |
-| Public Inbox | `pages/9_Public_Inbox.py` | Website enquiries, access requests, and public chat review |
-| Local Admins | `pages/10_Local_Admins.py` | Synced browser-local admin accounts, hashes, and latest activity |
+| Identity & Device | `pages/1_Identity_Device.py` | Profile, device registration, hardware/software/network details |
+| System Health | `pages/2_System_Health.py` | Listener status, bus log, doctor health, site health checks |
+| Work | `pages/3_Work.py` | Current focus, workflow tasks, task actions, Ask AI |
+| Memory | `pages/4_Memory.py` | Search, filters, memory cards, public/private visibility |
+| Security | `pages/5_Security.py` | Confirmations, session controls, shell command queue |
+| Conversation | `pages/6_Conversation.py` | Voice-driven AI conversation loop with wake phrase |
+| Public | `pages/7_Public.py` | Chat config, knowledge sources, inbox, enquiries, signups |
+| Admin | `pages/8_Admin.py` | Auth registry, personal identity, ventures, contact |
+| Automation | `pages/9_Automation.py` | Rules, daemon control, pending approvals, audit trail |
 
 ## Service Modules
 

@@ -201,7 +201,9 @@ with left:
                         if st.button("Disable", key=f"dis_{rid}", use_container_width=True):
                             _run_aut(f"automation rule disable {rid}", f"rule_disable_{rid}")
                 with rc3:
-                    pass  # reserved for future per-rule actions
+                    if st.button("Run Now", key=f"run_{rid}", use_container_width=True,
+                                 help="Trigger this rule once immediately"):
+                        _run_aut(f"automation rule run {rid}", f"rule_run_{rid}")
 
     # ── Pending approvals ──────────────────────────────────────────────────────
     if pending_items:

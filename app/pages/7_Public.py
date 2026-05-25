@@ -4,6 +4,7 @@ import html as _html
 from collections import defaultdict
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 
 from services.model_selector import render_model_selector
@@ -227,7 +228,6 @@ with tab_inbox:
         sorted_days = sorted(daily.keys())[-30:]
         col_chart, _ = st.columns([3, 1])
         with col_chart:
-            import pandas as pd
             df = pd.DataFrame(
                 {"Enquiries": [daily[d]["enquiry"] for d in sorted_days],
                  "Signups":   [daily[d]["signup"]   for d in sorted_days]},
@@ -321,4 +321,5 @@ with tab_inbox:
         st.caption(f"Updated {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
-maybe_auto_refresh(True, 8)
+_pub_refresh = st.sidebar.slider("Refresh every (s)", 5, 60, 8, key="public_refresh_interval")
+maybe_auto_refresh(True, _pub_refresh)
