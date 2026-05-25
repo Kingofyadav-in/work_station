@@ -1,6 +1,55 @@
 # Jarvis Bridge
 
+> The command bridge — parses natural language, routes to local actions or the HI layer, applies risk behavior, and connects to local or cloud AI providers.
+
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Risk Tiers](https://img.shields.io/badge/risk_tiers-3-yellow)
+![AI Providers](https://img.shields.io/badge/AI-Ollama%20%7C%20OpenAI%20%7C%20Anthropic-blueviolet)
+
 Jarvis is the command bridge for the platform. It accepts user input from CLI, dashboard, voice, and API callers; turns natural language into a canonical action; applies risk behavior; and routes work either to local handlers or to the Kingofyadav HI layer.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Runtime Flow](#runtime-flow)
+- [Key Files](#key-files)
+- [Running Commands](#running-commands)
+- [Command Categories](#command-categories)
+  - [Info](#info)
+  - [Device](#device)
+  - [Identity and HI State](#identity-and-hi-state)
+  - [Memory](#memory)
+  - [Workflow](#workflow)
+  - [Session and Preferences](#session-and-preferences)
+  - [AI](#ai)
+  - [Apps and System Controls](#apps-and-system-controls)
+  - [Shell](#shell)
+- [HI Routing Contract](#hi-routing-contract)
+- [Risk Model](#risk-model)
+- [AI Connector](#ai-connector)
+- [Voice](#voice)
+- [Plugins](#plugins)
+- [Session State](#session-state)
+- [Troubleshooting](#troubleshooting)
+- [Tests](#tests)
+- [Related Docs](#related-docs)
+
+---
+
+## Features
+
+- **Unified input surface** — CLI, Streamlit dashboard, REST API, and voice all share one command router with identical behavior
+- **Intent aliasing + fuzzy fallback** — exact match → prefix match → fuzzy match → AI fallback; unknown phrases always get a response
+- **3-tier risk model** — `low` runs immediately, `medium` records state changes, `high` requires explicit `confirm`
+- **Local-first AI** — Ollama runs on your hardware; OpenAI and Anthropic are opt-in fallbacks with no required API keys
+- **Drop-in plugin system** — add a `.py` file to `Jarvis/skills/` and the command is live at next startup
+- **Conversation history** — every AI exchange persisted to `logs/ai_history.jsonl`
+- **Voice wake-phrase** — configurable wake phrase for hands-free activation
+- **JSON output mode** — `--json` flag for scripting and API consumers
+
+---
 
 ## Runtime Flow
 
@@ -26,6 +75,8 @@ router.py         -> risk profile, confirmation gate, route selection
 
 Unknown phrases are routed to AI automatically, so conversational prompts still work even when they do not match a registered command.
 
+---
+
 ## Key Files
 
 | File | Responsibility |
@@ -46,6 +97,8 @@ Unknown phrases are routed to AI automatically, so conversational prompts still 
 | `system_info.py` | Hardware, OS, network, environment, and software inventory |
 | `tools/mic_test.py` | Microphone discovery and capture testing |
 
+---
+
 ## Running Commands
 
 From the repo root:
@@ -64,6 +117,14 @@ From inside `Jarvis/`:
 python3 bridge.py "commands"
 python3 bridge.py "device report"
 ```
+
+JSON output mode (useful for scripting):
+
+```bash
+python3 Jarvis/bridge.py --json "status" | jq '.result'
+```
+
+---
 
 ## Command Categories
 
@@ -189,6 +250,8 @@ cancel
 
 Shell execution is intentionally narrow. Commands outside the allowlist or paths outside the workspace are refused.
 
+---
+
 ## HI Routing Contract
 
 The router sends these actions to Kingofyadav through the message bus:
@@ -216,6 +279,8 @@ hi_set_domain
 
 All other registered actions are handled locally by `actions.py` or plugins.
 
+---
+
 ## Risk Model
 
 | Tier | Examples | Behavior |
@@ -225,6 +290,8 @@ All other registered actions are handled locally by `actions.py` or plugins.
 | `high` | Shell commands | Stored as pending until `confirm` |
 
 Pending confirmations expire after 5 minutes. `cancel` clears the pending command.
+
+---
 
 ## AI Connector
 
@@ -245,6 +312,8 @@ Every AI request includes:
 - Conversation history from `logs/ai_history.jsonl`.
 - Response mode and command style.
 
+---
+
 ## Voice
 
 ```bash
@@ -264,9 +333,13 @@ python3 Jarvis/tools/mic_test.py
 
 Voice needs `SpeechRecognition` and, for microphone capture, `pyaudio`. If those packages are unavailable, the rest of Jarvis continues to work.
 
+---
+
 ## Plugins
 
 Put local command plugins in `Jarvis/skills/*.py`. A plugin declares `ACTIONS`, aliases, a risk tier, and a handler. See [`skills/README.md`](skills/README.md).
+
+---
 
 ## Session State
 
@@ -287,6 +360,67 @@ Jarvis stores session data in `profiles.json` under `session`:
 
 HI identity fields are overlaid from `Kingofyadav/state.json` on load so profile data does not drift.
 
+---
+
+## Troubleshooting
+
+### Command not recognized
+
+Run `commands` to see the full live list. Unknown phrases automatically fall back to AI:
+
+```bash
+python3 Jarvis/bridge.py "commands"
+```
+
+---
+
+### AI requests time out
+
+Check that Ollama is running and the model is pulled:
+
+```bash
+curl http://localhost:11434/api/tags
+ollama pull llama3:latest
+```
+
+If using OpenAI or Anthropic, verify the API key in `.env` is valid.
+
+---
+
+### High-risk command stuck as pending
+
+Run `confirm` to execute or `cancel` to discard. Pending expires automatically after 5 minutes:
+
+```bash
+python3 Jarvis/bridge.py "confirmation status"
+python3 Jarvis/bridge.py "confirm"
+python3 Jarvis/bridge.py "cancel"
+```
+
+---
+
+### Plugin not loading
+
+Check the skills directory for syntax errors, then inspect the activity log:
+
+```bash
+python3 -c "import Jarvis.skills.my_skill"
+tail -20 logs/activity.log
+```
+
+---
+
+### Profile data appears stale
+
+The profile overlays identity fields from `Kingofyadav/state.json`. Ensure the Kingofyadav listener is running:
+
+```bash
+cat logs/kingofyadav.pid
+ps aux | grep "Kingofyadav/app.py"
+```
+
+---
+
 ## Tests
 
 From the repo root:
@@ -296,3 +430,14 @@ python3 -m unittest discover -s Jarvis/tests -t . -v
 ```
 
 Coverage includes command parsing, route selection, risk behavior, shell safety, plugin loading, profile/session persistence, voice fallback logic, and event journal writes.
+
+---
+
+## Related Docs
+
+- [Root Platform README](../README.md)
+- [Plugin Skills](skills/README.md)
+- [HI State Layer](../Kingofyadav/README.md)
+- [Shared Transport](../shared/README.md)
+- [FastAPI Web API](../web/README.md)
+- [Contributing Guide](../CONTRIBUTING.md)

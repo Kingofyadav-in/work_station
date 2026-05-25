@@ -1,6 +1,50 @@
 # shared
 
+> Platform-level transport, validation, locking, journaling, and diagnostics — no product logic, no external dependencies.
+
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Backends](https://img.shields.io/badge/bus_backends-2-blueviolet)
+![Atomic](https://img.shields.io/badge/writes-atomic-green)
+
 Shared infrastructure for the Jarvis Platform. This package contains transport, validation, locking, diagnostics, and event journaling. It intentionally contains no product-specific business logic.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Responsibilities](#responsibilities)
+- [Runtime Paths](#runtime-paths)
+- [Bus Backends](#bus-backends)
+  - [Filesystem Backend](#filesystem-backend)
+  - [SQLite Backend](#sqlite-backend)
+  - [Choosing a Backend](#choosing-a-backend)
+- [Message Lifecycle](#message-lifecycle)
+- [Message Schema](#message-schema)
+- [Bus Round-Trip Example](#bus-round-trip-example)
+- [Guarantees](#guarantees)
+- [Timeouts and Dead-letter](#timeouts-and-dead-letter)
+- [Diagnostics](#diagnostics)
+- [Event Journal](#event-journal)
+- [Development Rules](#development-rules)
+- [Troubleshooting](#troubleshooting)
+- [Tests](#tests)
+- [Related Docs](#related-docs)
+
+---
+
+## Features
+
+- **Atomic filesystem bus** — temp-file + rename writes; rename-to-claim for exactly-once processing
+- **SQLite WAL alternative backend** — same interface, better for high-volume message bursts
+- **Schema-validated messages** — every message checked against `intent_schema.json` before publish or process
+- **Exactly-once claim semantics** — renaming request to `.processing` before read prevents double-processing
+- **TTL dead-letter routing** — expired, invalid, or mismatched messages moved out of the hot path automatically
+- **Append-only audit journal** — per-day JSONL files with an in-memory SQLite index for fast cross-day queries
+- **File locking** — `fcntl` exclusive lock context manager for safe append/truncate operations
+- **Bus health CLI** — inspect pending, processed, dead-letter, and listener state from the terminal
+
+---
 
 ## Responsibilities
 
@@ -18,7 +62,9 @@ Shared infrastructure for the Jarvis Platform. This package contains transport, 
 | `local_admin_registry.py` | Append-only registry for browser-local admin sync snapshots |
 | `public_intake.py` | Storage and retrieval for public enquiry and signup form submissions |
 
-Runtime paths:
+---
+
+## Runtime Paths
 
 | Path | Purpose |
 |---|---|
@@ -29,6 +75,8 @@ Runtime paths:
 | `shared/bus/bus.db` | SQLite backend database when enabled |
 | `shared/events/YYYY-MM-DD.jsonl` | Audit events |
 | `logs/bus.log` | Human-readable bus activity log |
+
+---
 
 ## Bus Backends
 
@@ -60,6 +108,18 @@ bus = get_bus(actor="Jarvis")
 
 The returned object supports the same methods used by `MessageBus`: `send_request`, `list_requests_for_me`, `read_message`, `send_response`, `mark_processed`, `move_to_deadletter`, `wait_for_response`, `reap_stale_responses`, and `alert_deadletter`.
 
+### Choosing a Backend
+
+| Criterion | Filesystem (default) | SQLite |
+|---|---|---|
+| Dependencies | None | None (stdlib `sqlite3`) |
+| Best for | Single-machine, low-volume | High-volume bursts, easier query |
+| Concurrency | Rename-based claim | WAL mode, row-level locking |
+| Diagnostics | `ls` the directories | SQL queries via `bus_health.py` |
+| Restart safety | Files survive process restart | WAL survives process restart |
+
+---
+
 ## Message Lifecycle
 
 ```text
@@ -83,6 +143,8 @@ caller claims response by request_id
    v
 processed archive or database status
 ```
+
+---
 
 ## Message Schema
 
@@ -125,6 +187,33 @@ Example request:
 
 Response intents append `_response` to the request intent and reuse the same `request_id`.
 
+---
+
+## Bus Round-Trip Example
+
+```python
+import sys
+sys.path.insert(0, "shared")
+
+from bus_db import get_bus
+
+bus = get_bus(actor="Jarvis")
+
+request_id = bus.send_request(
+    intent="hi_get_profile",
+    target="Kingofyadav",
+    payload={"text": "profile", "args": {"raw_payload": ""}},
+)
+
+response = bus.wait_for_response(request_id, timeout=10)
+if response:
+    print(response["payload"].get("text", ""))
+else:
+    print("Timed out — is the Kingofyadav listener running?")
+```
+
+---
+
 ## Guarantees
 
 | Guarantee | Mechanism |
@@ -138,6 +227,8 @@ Response intents append `_response` to the request intent and reuse the same `re
 | Cross-writer safety | `file_lock()` protects append/truncate operations |
 | Audit query speed | `event_journal.py` builds an in-memory SQLite index for queries |
 
+---
+
 ## Timeouts and Dead-letter
 
 | Condition | Outcome |
@@ -148,6 +239,8 @@ Response intents append `_response` to the request intent and reuse the same `re
 | Invalid response | Dead-letter and return `None` |
 | Stale `.processing` | Reclaimed for processing |
 | Timeout waiting for response | Caller receives `None` and `TIMEOUT` is logged |
+
+---
 
 ## Diagnostics
 
@@ -163,6 +256,8 @@ Useful log checks:
 tail -f logs/bus.log
 ls shared/bus/deadletter/
 ```
+
+---
 
 ## Event Journal
 
@@ -189,6 +284,8 @@ items = query_events(source="Kingofyadav", event_type="workflow_task_added", lim
 
 The API exposes the same event data through `/api/journal`.
 
+---
+
 ## Development Rules
 
 - Keep transport generic. Domain logic belongs in `Jarvis/`, `Kingofyadav/`, `app/`, or `web/`.
@@ -196,6 +293,69 @@ The API exposes the same event data through `/api/journal`.
 - Include a `request_id` on all request/response pairs.
 - Move bad data out of hot paths into dead-letter.
 - Prefer `get_bus(actor)` in new code if backend flexibility matters.
+
+---
+
+## Troubleshooting
+
+### Bus requests staying in `requests/`
+
+The Kingofyadav listener is not running, or `JARVIS_BUS_BACKEND` is set to `sqlite` but the listener uses the filesystem backend (or vice versa). Verify:
+
+```bash
+cat logs/kingofyadav.pid
+echo $JARVIS_BUS_BACKEND
+```
+
+---
+
+### Dead-letter queue growing
+
+Invalid messages or a listener crash is dropping requests. Diagnose first:
+
+```bash
+python3 shared/bus_health.py
+ls shared/bus/deadletter/ | head -5
+cat shared/bus/deadletter/<filename>
+```
+
+Fix the root cause, then clear:
+
+```bash
+python3 shared/bus_health.py --clear-dl
+```
+
+---
+
+### Response timeout
+
+The Kingofyadav listener took too long to process the request. Check:
+
+```bash
+tail -50 logs/kingofyadav.log
+```
+
+---
+
+### SQLite mode: database locked
+
+Multiple listeners are running simultaneously. Ensure only one `Kingofyadav/app.py` process is active:
+
+```bash
+ps aux | grep "Kingofyadav/app.py"
+```
+
+---
+
+### Journal query returns empty
+
+The journal writes one file per day. Check that the date range you are querying has events:
+
+```bash
+ls shared/events/
+```
+
+---
 
 ## Tests
 
@@ -206,3 +366,13 @@ python3 -m unittest discover -s shared/tests -v
 ```
 
 Coverage includes atomic request claiming and response isolation by request id.
+
+---
+
+## Related Docs
+
+- [Root Platform README](../README.md)
+- [Jarvis Bridge](../Jarvis/README.md)
+- [HI State Layer](../Kingofyadav/README.md)
+- [FastAPI Web API](../web/README.md)
+- [Contributing Guide](../CONTRIBUTING.md)

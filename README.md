@@ -2,7 +2,39 @@
 
 > Personal local AI control plane — command execution, human-interface state, workflow tracking, memory, voice input, private dashboard, and a public website chat layer for [kingofyadav.in](https://kingofyadav.in).
 
+![Version](https://img.shields.io/badge/version-4.2-blue)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+
 **Local-first. Private by default. Zero cloud dependency.**
+
+---
+
+## Table of Contents
+
+- [What Is Jarvis?](#what-is-jarvis)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Command Surface](#command-surface)
+- [Pro Usage Patterns](#pro-usage-patterns)
+- [Runtime Options](#runtime-options)
+- [AI Providers](#ai-providers)
+- [Persistence](#persistence)
+- [Security Model](#security-model)
+- [Message Bus](#message-bus)
+- [Logs](#logs)
+- [Tests](#tests)
+- [Operations Runbook](#operations-runbook)
+- [Troubleshooting](#troubleshooting)
+- [Core Principles](#core-principles)
+- [Roadmap](#roadmap)
+- [Related Docs](#related-docs)
+- [Production Security Checklist](#production-security-checklist)
 
 ---
 
@@ -11,6 +43,19 @@
 Jarvis is a self-hosted AI control plane that runs on your own machine. It manages your identity state, workflow, memory, and device — and exposes a secure REST + WebSocket API so your website, scripts, and dashboards can all talk to a single source of truth.
 
 Private state never leaves the machine. External AI providers (OpenAI, Anthropic) are optional fallbacks — the default is local Ollama.
+
+---
+
+## Key Features
+
+- **Local-first AI** — Ollama runs on your hardware; OpenAI and Anthropic are opt-in fallbacks only
+- **Unified command surface** — CLI, Streamlit dashboard, REST API, and voice all share one command router
+- **Human-interface (HI) state layer** — durable, typed profile, preferences, memory, and workflow in a single locked store
+- **Autonomous automation** — rules engine fires triggers, runs actions, self-heals services, and dispatches notifications without manual commands
+- **Semantic memory** — curated notes stored in SQLite with token vectors, related-memory graph, and public/private visibility
+- **Public website chat** — safe, isolated chat widget for [kingofyadav.in](https://kingofyadav.in) that never executes commands or exposes private state
+- **Append-only audit journal** — every mutation and completed action written to timestamped JSONL for full observability
+- **Production-ready** — systemd services, Docker Compose, Nginx reverse proxy, scoped API tokens, CORS, and rate limiting
 
 ---
 
@@ -52,6 +97,19 @@ Private state never leaves the machine. External AI providers (OpenAI, Anthropic
 | API | `web/` | FastAPI control plane, SSE, WebSocket, public-safe chat |
 | Scripts | `scripts/` | Start/stop, systemd, health, deploy, watchdog |
 | Runtime | `logs/`, `shared/events/` | Process logs, PID files, history, model config, audit events |
+
+---
+
+## Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| Python | 3.12+ | Older versions untested |
+| Ollama | Latest | For local AI inference — `ollama pull llama3:latest` |
+| `jq` | Any | For parsing CLI examples (`apt install jq`) |
+| `watchdog` (Python) | Any | For low-latency inotify bus; installed via `requirements.txt` |
+| systemd | Any | Optional, recommended for production autostart |
+| Docker + Compose | Any | Optional, for containerized deployment |
 
 ---
 
@@ -481,6 +539,83 @@ Coverage: command routing, risk behavior, shell safety, profile/session persiste
 
 ---
 
+## Troubleshooting
+
+### Dashboard won't start
+
+**Symptom:** Browser shows "Authentication required" with no password prompt, or Streamlit exits immediately.
+
+**Fix:** In production mode (`APP_ENV=production`), `DASHBOARD_PASSWORD` must be set in `.env`. Without it, the dashboard locks before rendering.
+
+```bash
+grep DASHBOARD_PASSWORD .env   # must be non-empty
+```
+
+---
+
+### API returns 401
+
+**Symptom:** `{"detail": "Unauthorized"}` on private endpoints.
+
+**Fix:** Set `JARVIS_API_KEY` in `.env`, or configure a scoped token in `logs/api_tokens.json`. Pass it as `Authorization: Bearer <token>` or `X-Api-Key: <token>`.
+
+---
+
+### Commands time out / "listener not running"
+
+**Symptom:** `bridge.py` hangs or returns a bus timeout error.
+
+**Fix:** The Kingofyadav listener is not running. Check for a stale or missing PID:
+
+```bash
+cat logs/kingofyadav.pid
+ps aux | grep "Kingofyadav/app.py"
+python3 Kingofyadav/app.py &
+```
+
+---
+
+### Bus dead-letter queue growing
+
+**Symptom:** `python3 shared/bus_health.py` shows many dead-letter entries.
+
+**Fix:** Diagnose the root cause (invalid messages, listener crash), then clear:
+
+```bash
+python3 shared/bus_health.py --clear-dl
+```
+
+---
+
+### Ollama responses are slow or time out
+
+**Symptom:** `ask` commands take > 30 s or return a timeout error.
+
+**Fix:** Reduce context window or switch to a smaller model:
+
+```bash
+OLLAMA_NUM_CTX=1024
+OLLAMA_MODEL=phi3:mini
+```
+
+Or verify Ollama is running: `curl http://localhost:11434/api/tags`
+
+---
+
+### Voice not working
+
+**Symptom:** Voice page shows an import error or mic not found.
+
+**Fix:**
+
+```bash
+pip install SpeechRecognition pyaudio
+python3 Jarvis/tools/mic_test.py       # lists detected microphone devices
+python3 Jarvis/voice_input.py --text "status"   # test without mic
+```
+
+---
+
 ## Core Principles
 
 | Principle | Enforcement |
@@ -537,6 +672,21 @@ Components under `automation/`:
 
 ---
 
+## Related Docs
+
+| Component | README |
+|---|---|
+| Jarvis Bridge | [Jarvis/README.md](Jarvis/README.md) |
+| HI State Layer | [Kingofyadav/README.md](Kingofyadav/README.md) |
+| Streamlit Dashboard | [app/README.md](app/README.md) |
+| FastAPI Web API | [web/README.md](web/README.md) |
+| Automation Daemon | [automation/README.md](automation/README.md) |
+| Shared Transport | [shared/README.md](shared/README.md) |
+| Plugin Skills | [Jarvis/skills/README.md](Jarvis/skills/README.md) |
+| Contributing Guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
+
+---
+
 ## Production Security Checklist
 
 Run before every public deployment:
@@ -584,4 +734,4 @@ curl -s http://127.0.0.1:5050/api/health/detail | jq '.summary'
 
 ---
 
-**Owner:** King Yadav · [kingofyadav.in](https://kingofyadav.in) · Jhon Aamit LLP
+**Owner:** King Yadav · [kingofyadav.in](https://kingofyadav.in) · Jhon Aamit LLP · MIT License

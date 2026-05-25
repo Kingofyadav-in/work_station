@@ -1,8 +1,49 @@
 # Kingofyadav HI Layer
 
-Kingofyadav is the Human Interface state layer for Jarvis. It owns the durable truth for the human operator: profile, preferences, workflow, curated memory, memory visibility, and audit events.
+> The human-interface state layer — owns the durable truth for the operator: profile, preferences, workflow, curated memory, and audit events.
+
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![SQLite](https://img.shields.io/badge/storage-SQLite-lightblue)
+![Single writer](https://img.shields.io/badge/state-single--writer-important)
+
+Kingofyadav is the Human Interface (HI) state layer for Jarvis. It owns the durable truth for the human operator: profile, preferences, workflow, curated memory, memory visibility, and audit events.
 
 The listener receives typed requests from Jarvis through the shared bus, dispatches them to domain modules, writes state atomically, and records mutations in the event journal.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Files](#files)
+- [Starting the Listener](#starting-the-listener)
+- [Listener Backends](#listener-backends)
+- [Intent Contract](#intent-contract)
+  - [Reads](#reads)
+  - [Mutations](#mutations)
+- [State Model](#state-model)
+- [Memory System](#memory-system)
+- [Workflow System](#workflow-system)
+- [Audit Journal](#audit-journal)
+- [Operational Rules](#operational-rules)
+- [Troubleshooting](#troubleshooting)
+- [Tests](#tests)
+- [Related Docs](#related-docs)
+
+---
+
+## Features
+
+- **Typed intent dispatch** — every mutation routes through a named intent, never a generic text string
+- **Atomic state load/save** — `fcntl` exclusive lock prevents concurrent writes to `state.json`
+- **SQLite semantic memory index** — token vectors, related-memory graph, public/private visibility metadata
+- **Overflow protection with archive** — memory cap enforced before trim; archived entries preserved in the journal
+- **Append-only audit journal** — every successful mutation writes a JSONL event to `shared/events/`
+- **inotify + adaptive polling fallback** — low-latency request handling via `watchdog`; graceful fallback when unavailable
+- **Two bus backends** — filesystem (default) or SQLite WAL for high-volume message throughput
+
+---
 
 ## Architecture
 
@@ -31,6 +72,8 @@ state.json              current HI truth
 shared/events/*.jsonl   append-only audit trail
 ```
 
+---
+
 ## Files
 
 | File | Responsibility |
@@ -49,7 +92,9 @@ shared/events/*.jsonl   append-only audit trail
 | `state.json` | Persistent profile, preferences, memory, workflow |
 | `memory.db` | Searchable memory metadata and relationships |
 
-## Starting
+---
+
+## Starting the Listener
 
 From the repo root:
 
@@ -57,14 +102,30 @@ From the repo root:
 python3 Kingofyadav/app.py
 ```
 
-Usually you start it through another service:
+Usually started through another service:
 
 ```bash
 bash scripts/start_dashboard.sh
 systemctl --user start jarvis-kingofyadav
 ```
 
+Verify it is running:
+
+```bash
+cat logs/kingofyadav.pid
+ps aux | grep "Kingofyadav/app.py"
+```
+
+Quick functional test:
+
+```bash
+python3 Kingofyadav/app.py &
+python3 Jarvis/bridge.py "profile"
+```
+
 The listener writes `logs/kingofyadav.pid`. Jarvis checks that PID before sending HI requests and fails fast if the listener is offline.
+
+---
 
 ## Listener Backends
 
@@ -77,6 +138,8 @@ JARVIS_BUS_BACKEND=sqlite
 ```
 
 SQLite mode uses `shared/bus/bus.db` with WAL and the same public bus interface.
+
+---
 
 ## Intent Contract
 
@@ -109,6 +172,8 @@ SQLite mode uses `shared/bus/bus.db` with WAL and the same public bus interface.
 | `hi_memory_visibility` | `memory_id`, `visibility` | Set `public` or `private` metadata |
 
 Every successful mutation appends an event to `shared/events/YYYY-MM-DD.jsonl`.
+
+---
 
 ## State Model
 
@@ -147,7 +212,7 @@ Every successful mutation appends an event to `shared/events/YYYY-MM-DD.jsonl`.
 }
 ```
 
-Normalization rules:
+### Normalization Rules
 
 - Missing sections are filled from defaults.
 - Memory entries are converted to typed dictionaries.
@@ -156,13 +221,15 @@ Normalization rules:
 - Workflow task status, due text, blockers, and estimates are normalized.
 - Optional profile fields are preserved when present.
 
+---
+
 ## Memory System
 
 Curated memory is stored in `state.json` and indexed into `memory.db`.
 
 | Capability | Implementation |
 |---|---|
-| Add memory | `hi_memory_add` -> `memory.add_memory()` |
+| Add memory | `hi_memory_add` → `memory.add_memory()` |
 | Full-text/semantic search | Token vectors in `memory_store.py` |
 | Related memories | Stored connection metadata refreshed from similarity |
 | Public/private metadata | `hi_memory_visibility` updates SQLite metadata |
@@ -176,6 +243,8 @@ python3 Jarvis/bridge.py "search memory architecture"
 python3 Jarvis/bridge.py "related memory <memory_id>"
 python3 Jarvis/bridge.py "make memory public <memory_id>"
 ```
+
+---
 
 ## Workflow System
 
@@ -194,6 +263,8 @@ Task fields include:
 | `created_at` | UTC timestamp |
 | `updated_at` | UTC timestamp |
 
+---
+
 ## Audit Journal
 
 Events are append-only JSONL files under `shared/events/`.
@@ -206,6 +277,8 @@ Example:
 
 Use API `/api/journal` or `shared/event_journal.py` helpers to query events by time, source, and type.
 
+---
+
 ## Operational Rules
 
 - Do not edit `state.json` directly.
@@ -213,6 +286,59 @@ Use API `/api/journal` or `shared/event_journal.py` helpers to query events by t
 - Keep mutation logic in domain modules, not in `handler.py`.
 - Add a test for every new intent or normalization rule.
 - Keep `Jarvis/router.py` `HI_INTENTS` synchronized with `handler.py`.
+
+---
+
+## Troubleshooting
+
+### HI requests time out
+
+The listener is not running. Check the PID file:
+
+```bash
+cat logs/kingofyadav.pid
+ps aux | grep "Kingofyadav/app.py"
+systemctl --user start jarvis-kingofyadav
+```
+
+---
+
+### state.json schema error on load
+
+The file may have been edited directly or corrupted. Run the repair tool:
+
+```bash
+python3 Kingofyadav/validate_state.py
+```
+
+---
+
+### Memory search returns nothing
+
+The SQLite index may need rebuilding after a migration. Run the migration helper:
+
+```bash
+python3 Kingofyadav/migrate_memory.py
+```
+
+---
+
+### Bus dead-letter has HI requests
+
+The listener crashed and left requests unhandled. Restart the listener, then clear dead-letter:
+
+```bash
+systemctl --user restart jarvis-kingofyadav
+python3 shared/bus_health.py --clear-dl
+```
+
+---
+
+### State changes not persisting
+
+Never edit `state.json` directly — it will be overwritten on the next save. Use the intent API or `state_manager.update_state()` instead.
+
+---
 
 ## Tests
 
@@ -223,3 +349,13 @@ python3 -m unittest discover -s Kingofyadav/tests -v
 ```
 
 Coverage includes handler routing, profile/preference mutations, memory append/search/visibility, workflow task updates, state normalization, and archive behavior.
+
+---
+
+## Related Docs
+
+- [Root Platform README](../README.md)
+- [Jarvis Bridge](../Jarvis/README.md)
+- [Shared Transport](../shared/README.md)
+- [FastAPI Web API](../web/README.md)
+- [Contributing Guide](../CONTRIBUTING.md)

@@ -1,0 +1,20 @@
+{
+  "ai": "claude",
+  "model": "claude-sonnet-4-6",
+  "framework": "streamlit",
+  "scan_paths": [
+    "."
+  ],
+  "exclude": [
+    ".venv",
+    "node_modules",
+    "__pycache__",
+    ".git",
+    "dist",
+    "build",
+    ".next",
+    "migrations"
+  ],
+  "max_file_kb": 50,
+  "created_at": "2026-05-25T21:56:43"
+}

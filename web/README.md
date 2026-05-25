@@ -1,6 +1,47 @@
 # Jarvis Web API
 
+> FastAPI control plane — authenticated REST, SSE, WebSocket, public-safe state, website chat, and audit journal in one service.
+
+![FastAPI](https://img.shields.io/badge/FastAPI-0.11x-teal)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Port](https://img.shields.io/badge/port-5050-lightgrey)
+![Auth](https://img.shields.io/badge/auth-scoped--tokens-orange)
+
 FastAPI control plane for Jarvis. It exposes private authenticated control endpoints, public-safe state endpoints, live streams, audit journal queries, and the website-safe Jarvis chat endpoint.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Files](#files)
+- [Start](#start)
+- [Environment](#environment)
+- [Authentication](#authentication)
+  - [Scoped Token Setup](#scoped-token-setup)
+- [Endpoints](#endpoints)
+- [Examples](#examples)
+- [Public Chat Safety Model](#public-chat-safety-model)
+- [Website Widget](#website-widget)
+- [Rate Limits and Limits](#rate-limits-and-limits)
+- [Deployment Notes](#deployment-notes)
+- [Troubleshooting](#troubleshooting)
+- [Tests](#tests)
+- [Related Docs](#related-docs)
+
+---
+
+## Features
+
+- **REST + SSE + WebSocket in one service** — control, streaming, and real-time state from a single FastAPI app
+- **Two auth styles** — legacy API key or scoped tokens with per-token rate limits and expiry dates
+- **Public chat safety layer** — no command execution, no private state leak, injection-pattern filtering
+- **Embeddable JS chat widget** — drop a `<script>` tag on any page for visitor chat
+- **Rate limiting** — per-token RPM for private endpoints, configurable RPM for public chat
+- **Audit journal query API** — query events by time, source, and type without reading files directly
+- **OpenAPI docs UI** — interactive API documentation at `/api/docs`
+
+---
 
 ## Files
 
@@ -13,6 +54,8 @@ FastAPI control plane for Jarvis. It exposes private authenticated control endpo
 | `nginx-kingofyadav.in.conf` | Public Nginx site config |
 | `nginx-jarvis-local.conf` | Local Nginx config |
 | `tests/test_api.py` | API tests |
+
+---
 
 ## Start
 
@@ -33,6 +76,8 @@ Default:
 ```text
 http://127.0.0.1:5050/api/health
 ```
+
+---
 
 ## Environment
 
@@ -59,6 +104,8 @@ LIVE_CLASS_TOKEN=                          # token required to POST /api/live-cl
 
 When `JARVIS_API_KEY` is empty, private endpoints are available only from localhost. When a key or scoped token is configured, use `Authorization: Bearer <token>` or `X-Api-Key: <token>`.
 
+---
+
 ## Authentication
 
 The API supports two auth styles:
@@ -68,7 +115,9 @@ The API supports two auth styles:
 | Legacy key | `JARVIS_API_KEY` | Full access |
 | Scoped tokens | `JARVIS_API_TOKENS` or `logs/api_tokens.json` | `read`, `command`, or full by token |
 
-Scoped token file example:
+### Scoped Token Setup
+
+Create `logs/api_tokens.json`:
 
 ```json
 {
@@ -88,6 +137,10 @@ Scoped token file example:
   ]
 }
 ```
+
+Then restart the API to pick up the new token file. Tokens are hot-reloaded on each request, so you can add tokens without a full restart.
+
+---
 
 ## Endpoints
 
@@ -119,6 +172,8 @@ Scoped token file example:
 | `GET` | `/api/live-class` | no | Live class public state |
 | `POST` | `/api/live-class` | token | Update live class state (requires `LIVE_CLASS_TOKEN`) |
 | `GET` | `/api/docs` | no | OpenAPI UI |
+
+---
 
 ## Examples
 
@@ -152,11 +207,20 @@ curl -s -X POST http://127.0.0.1:5050/api/jarvis-chat \
   -d '{"message":"What services are offered?"}'
 ```
 
+Live state snapshot:
+
+```bash
+curl -s http://127.0.0.1:5050/api/live \
+  -H "Authorization: Bearer $JARVIS_API_KEY" | jq '.status.current_focus'
+```
+
+---
+
 ## Public Chat Safety Model
 
 Public chat is separate from private command execution.
 
-It does not:
+It does **not**:
 
 - Call `Jarvis/router.py` command execution.
 - Execute shell commands.
@@ -164,7 +228,7 @@ It does not:
 - Expose private memory.
 - Read arbitrary local files.
 
-It does:
+It **does**:
 
 - Use public website knowledge files under `JARVIS_PUBLIC_SITE_ROOT`.
 - Use public-safe state from `/api/public-state`.
@@ -172,6 +236,8 @@ It does:
 - Enforce request size and rate limits.
 - Log public interactions to `logs/public_chat.jsonl`.
 - Return fallback answers when configured and provider calls fail.
+
+---
 
 ## Website Widget
 
@@ -198,6 +264,8 @@ The widget supports:
 - Optional spoken replies.
 - Suggested starter prompts.
 
+---
+
 ## Rate Limits and Limits
 
 | Limit | Value |
@@ -208,13 +276,80 @@ The widget supports:
 | Public chat message | 1,200 characters |
 | SSE max duration | 1,800 seconds |
 
+---
+
 ## Deployment Notes
 
 - Keep Python API bound to loopback unless you have explicit auth and proxy rules.
 - Put Nginx in front for TLS and public routing.
 - Serve `web/static/jarvis-widget.js` from a public static path such as `/api-static/jarvis-widget.js`.
-- Keep `/api/command` private.
+- Keep `/api/command` private — never expose it through a public Nginx location block.
 - Only expose `/api/jarvis-chat`, `/api/public-state`, and `/api/ws/public` publicly if desired.
+
+---
+
+## Troubleshooting
+
+### All private endpoints return 401
+
+`JARVIS_API_KEY` is not set, or the token in `logs/api_tokens.json` does not match what is being sent. Verify:
+
+```bash
+grep JARVIS_API_KEY .env
+curl -s http://127.0.0.1:5050/api/health    # no auth required — confirms service is up
+```
+
+---
+
+### Public chat returns 503
+
+`JARVIS_PUBLIC_CHAT=1` is not set in `.env`, or the API was started before the variable was added. Set the variable and restart:
+
+```bash
+grep JARVIS_PUBLIC_CHAT .env
+systemctl --user restart jarvis-api
+```
+
+---
+
+### WebSocket disconnects immediately
+
+The `ALLOWED_ORIGIN` CORS setting does not include the origin making the request. Update `.env`:
+
+```bash
+ALLOWED_ORIGIN=https://your-domain.com
+```
+
+---
+
+### SSE stream stops after ~30 minutes
+
+This is expected — `SSE_MAX_DURATION=1800` is the cap. Reconnect the client after disconnection. Most SSE client libraries do this automatically.
+
+---
+
+### Widget not loading
+
+Ensure `web/static/jarvis-widget.js` is served from the path the `src` attribute points to. If using Nginx:
+
+```nginx
+location /api-static/ {
+    alias /home/kingofyadav/dev/projects/work_station/web/static/;
+}
+```
+
+---
+
+### Rate limit 429 on public chat
+
+Increase `JARVIS_PUBLIC_CHAT_RPM` in `.env` (default 12). For high-traffic periods, consider also increasing `JARVIS_PUBLIC_CHAT_WORKERS`:
+
+```bash
+JARVIS_PUBLIC_CHAT_RPM=30
+JARVIS_PUBLIC_CHAT_WORKERS=2
+```
+
+---
 
 ## Tests
 
@@ -223,3 +358,14 @@ From the repo root:
 ```bash
 python3 -m unittest discover -s web/tests -v
 ```
+
+---
+
+## Related Docs
+
+- [Root Platform README](../README.md)
+- [Jarvis Bridge](../Jarvis/README.md)
+- [HI State Layer](../Kingofyadav/README.md)
+- [Streamlit Dashboard](../app/README.md)
+- [Shared Transport](../shared/README.md)
+- [Contributing Guide](../CONTRIBUTING.md)
